@@ -1,4 +1,4 @@
-/* ===== LOGIN SYSTEM STYLES ===== */
+/* ===== LOGIN SYSTEM STYLES - DARK THEME ===== */
 
 .login-overlay {
     position: fixed;
@@ -6,7 +6,7 @@
     left: 0;
     width: 100%;
     height: 100%;
-    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 50%, #0d1b2a 100%);
     display: flex;
     justify-content: center;
     align-items: center;
@@ -15,15 +15,15 @@
 }
 
 .login-container {
-    background: rgba(255, 255, 255, 0.95);
+    background: rgba(20, 25, 45, 0.95);
     backdrop-filter: blur(10px);
     border-radius: 20px;
     padding: 40px;
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
     max-width: 500px;
     width: 90%;
     text-align: center;
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(100, 150, 200, 0.2);
     max-height: 90vh;
     overflow-y: auto;
 }
@@ -33,21 +33,21 @@
 }
 
 .login-header h1 {
-    color: #2c3e50;
+    color: #e0e8ff;
     font-size: 2.5em;
     margin: 0 0 10px 0;
     font-weight: 300;
 }
 
 .login-header h2 {
-    color: #2c3e50;
+    color: #c0d0ff;
     font-size: 1.8em;
     margin: 0 0 10px 0;
     font-weight: 400;
 }
 
 .login-header p {
-    color: #7f8c8d;
+    color: #8ca0c0;
     margin: 0;
     font-size: 1.1em;
 }
@@ -61,8 +61,8 @@
 }
 
 .account-card {
-    background: white;
-    border: 2px solid #e0e6ed;
+    background: rgba(35, 45, 70, 0.8);
+    border: 2px solid #3a4860;
     border-radius: 12px;
     padding: 16px 20px;
     cursor: pointer;
@@ -74,58 +74,59 @@
     position: relative;
 }
 
-/* Role-based border colors */
+/* Role-based border colors - dark variants */
 .account-card[data-role="Dev"] {
-    border-color: #9b59b6;
+    border-color: #9d7dd4;
 }
 
 .account-card[data-role="Кухня"] {
-    border-color: #e67e22;
+    border-color: #d96f3a;
 }
 
 .account-card[data-role="Ванна"] {
-    border-color: #3498db;
+    border-color: #4a8fd6;
 }
 
 .account-card[data-role="Кладовка"] {
-    border-color: #27ae60;
+    border-color: #5eb374;
 }
 
 .account-card[data-role="Viewer"] {
-    border-color: #95a5a6;
+    border-color: #6b8aa0;
 }
 
 .account-card:hover {
-    background: #f8f9fa;
+    background: rgba(50, 65, 95, 0.9);
     transform: translateY(-2px);
-    box-shadow: 0 5px 15px rgba(52, 152, 219, 0.2);
+    box-shadow: 0 5px 15px rgba(74, 143, 214, 0.2);
+    border-color: #5a7aaa;
 }
 
 .account-card:hover[data-role="Dev"] {
-    border-color: #8e44ad;
-    box-shadow: 0 5px 15px rgba(155, 89, 182, 0.3);
+    border-color: #b99dd4;
+    box-shadow: 0 5px 15px rgba(157, 125, 212, 0.3);
 }
 
 .account-card:hover[data-role="Кухня"] {
-    border-color: #d35400;
-    box-shadow: 0 5px 15px rgba(230, 126, 34, 0.3);
+    border-color: #e89060;
+    box-shadow: 0 5px 15px rgba(217, 111, 58, 0.3);
 }
 
 .account-card:hover[data-role="Ванна"] {
-    border-color: #2980b9;
-    box-shadow: 0 5px 15px rgba(52, 152, 219, 0.3);
+    border-color: #6ba5e8;
+    box-shadow: 0 5px 15px rgba(74, 143, 214, 0.3);
 }
 
 .account-card:hover[data-role="Кладовка"] {
-    border-color: #229954;
-    box-shadow: 0 5px 15px rgba(39, 174, 96, 0.3);
+    border-color: #7ec992;
+    box-shadow: 0 5px 15px rgba(94, 179, 116, 0.3);
 }
 
 .account-avatar {
     width: 50px;
     height: 50px;
     border-radius: 50%;
-    background: linear-gradient(135deg, #3498db, #2980b9);
+    background: linear-gradient(135deg, #4a8fd6, #2a5aa8);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -135,23 +136,23 @@
 
 /* Role-based avatar backgrounds */
 .account-card[data-role="Dev"] .account-avatar {
-    background: linear-gradient(135deg, #9b59b6, #8e44ad);
+    background: linear-gradient(135deg, #9d7dd4, #7a5aad);
 }
 
 .account-card[data-role="Кухня"] .account-avatar {
-    background: linear-gradient(135deg, #e67e22, #d35400);
+    background: linear-gradient(135deg, #d96f3a, #a8552a);
 }
 
 .account-card[data-role="Ванна"] .account-avatar {
-    background: linear-gradient(135deg, #3498db, #2980b9);
+    background: linear-gradient(135deg, #4a8fd6, #2a5aa8);
 }
 
 .account-card[data-role="Кладовка"] .account-avatar {
-    background: linear-gradient(135deg, #27ae60, #229954);
+    background: linear-gradient(135deg, #5eb374, #3d8a52);
 }
 
 .account-card[data-role="Viewer"] .account-avatar {
-    background: linear-gradient(135deg, #95a5a6, #7f8c8d);
+    background: linear-gradient(135deg, #6b8aa0, #4a5f7a);
 }
 
 .account-info {
@@ -161,13 +162,13 @@
 .account-name {
     font-size: 1.1em;
     font-weight: 600;
-    color: #2c3e50;
+    color: #e0e8ff;
     margin: 0 0 4px 0;
 }
 
 .account-role {
     font-size: 0.85em;
-    color: #7f8c8d;
+    color: #8ca0c0;
     margin: 0;
     display: flex;
     align-items: center;
@@ -176,7 +177,7 @@
 
 .account-arrow {
     font-size: 1.2em;
-    color: #bdc3c7;
+    color: #5a6f8a;
 }
 
 /* Password Form Styles */
@@ -189,13 +190,14 @@
 }
 
 .selected-account {
-    background: #f8f9fa;
+    background: rgba(35, 45, 70, 0.6);
     border-radius: 12px;
     padding: 20px;
     margin-bottom: 20px;
     display: flex;
     align-items: center;
     gap: 15px;
+    border: 1px solid rgba(100, 150, 200, 0.15);
 }
 
 .selected-account .account-avatar {
@@ -212,13 +214,13 @@
 .selected-account-name {
     font-size: 1.3em;
     font-weight: 600;
-    color: #2c3e50;
+    color: #e0e8ff;
     margin: 0 0 5px 0;
 }
 
 .selected-account-role {
     font-size: 0.9em;
-    color: #7f8c8d;
+    color: #8ca0c0;
     margin: 0;
 }
 
@@ -235,7 +237,7 @@
 .form-group label {
     display: block;
     margin-bottom: 8px;
-    color: #2c3e50;
+    color: #c0d0ff;
     font-weight: 500;
     font-size: 0.9em;
 }
@@ -243,17 +245,24 @@
 .form-group input {
     width: 100%;
     padding: 12px 16px;
-    border: 2px solid #e0e6ed;
+    border: 2px solid #3a4860;
     border-radius: 10px;
     font-size: 1em;
     transition: all 0.3s ease;
     box-sizing: border-box;
+    background: rgba(30, 40, 65, 0.8);
+    color: #e0e8ff;
+}
+
+.form-group input::placeholder {
+    color: #6b8aa0;
 }
 
 .form-group input:focus {
     outline: none;
-    border-color: #3498db;
-    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+    border-color: #4a8fd6;
+    box-shadow: 0 0 0 3px rgba(74, 143, 214, 0.15);
+    background: rgba(30, 40, 65, 0.95);
 }
 
 .login-buttons {
@@ -279,31 +288,31 @@
 }
 
 .btn-primary {
-    background: linear-gradient(135deg, #3498db, #2980b9);
+    background: linear-gradient(135deg, #4a8fd6, #2a5aa8);
     color: white;
 }
 
 .btn-primary:hover {
-    background: linear-gradient(135deg, #2980b9, #1f5f8b);
+    background: linear-gradient(135deg, #2a5aa8, #1a3a78);
     transform: translateY(-2px);
-    box-shadow: 0 5px 15px rgba(52, 152, 219, 0.3);
+    box-shadow: 0 5px 15px rgba(74, 143, 214, 0.4);
 }
 
 .btn-secondary {
     background: transparent;
-    color: #7f8c8d;
-    border: 2px solid #e0e6ed;
+    color: #8ca0c0;
+    border: 2px solid #3a4860;
 }
 
 .btn-secondary:hover {
-    background: #f8f9fa;
-    color: #2c3e50;
-    border-color: #bdc3c7;
+    background: rgba(50, 65, 95, 0.5);
+    color: #c0d0ff;
+    border-color: #5a7aaa;
 }
 
 .error-message {
-    background: #fee;
-    color: #c0392b;
+    background: rgba(220, 50, 50, 0.15);
+    color: #ff7070;
     padding: 12px;
     border-radius: 8px;
     border-left: 4px solid #e74c3c;
@@ -313,8 +322,8 @@
 }
 
 .success-message {
-    background: #efe;
-    color: #27ae60;
+    background: rgba(46, 204, 113, 0.15);
+    color: #5eef85;
     padding: 12px;
     border-radius: 8px;
     border-left: 4px solid #2ecc71;
@@ -336,8 +345,8 @@
     width: 20px;
     height: 20px;
     margin: -10px 0 0 -10px;
-    border: 2px solid #f3f3f3;
-    border-top: 2px solid #3498db;
+    border: 2px solid #3a4860;
+    border-top: 2px solid #4a8fd6;
     border-radius: 50%;
     animation: spin 1s linear infinite;
 }
@@ -358,27 +367,27 @@
 }
 
 .role-badge.dev {
-    background: #9b59b6;
+    background: #7a5aad;
     color: white;
 }
 
 .role-badge.kitchen {
-    background: #e67e22;
+    background: #a8552a;
     color: white;
 }
 
 .role-badge.bathroom {
-    background: #3498db;
+    background: #2a5aa8;
     color: white;
 }
 
 .role-badge.storage {
-    background: #27ae60;
+    background: #3d8a52;
     color: white;
 }
 
 .role-badge.viewer {
-    background: #95a5a6;
+    background: #4a5f7a;
     color: white;
 }
 
@@ -443,10 +452,11 @@
     align-items: center;
     gap: 12px;
     padding: 12px 20px;
-    background: white;
+    background: rgba(35, 45, 70, 0.8);
     border-radius: 12px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
     margin-bottom: 20px;
+    border: 1px solid rgba(100, 150, 200, 0.15);
 }
 
 .user-header-avatar {
@@ -457,7 +467,7 @@
     align-items: center;
     justify-content: center;
     font-size: 1.4em;
-    background: linear-gradient(135deg, #3498db, #2980b9);
+    background: linear-gradient(135deg, #4a8fd6, #2a5aa8);
 }
 
 .user-header-info {
@@ -466,20 +476,20 @@
 
 .user-header-name {
     font-weight: 600;
-    color: #2c3e50;
+    color: #e0e8ff;
     margin: 0;
     font-size: 1.1em;
 }
 
 .user-header-role {
     font-size: 0.85em;
-    color: #7f8c8d;
+    color: #8ca0c0;
     margin: 2px 0 0 0;
 }
 
 .user-header-logout {
     padding: 8px 16px;
-    background: #e74c3c;
+    background: #c0392b;
     color: white;
     border: none;
     border-radius: 8px;
@@ -489,6 +499,6 @@
 }
 
 .user-header-logout:hover {
-    background: #c0392b;
+    background: #a93226;
     transform: translateY(-1px);
 }
