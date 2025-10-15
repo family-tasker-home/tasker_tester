@@ -18,7 +18,7 @@ window.createMainApp = function(currentUser, USERS) {
         <!-- Sidebar Navigation -->
         <div class="sidebar" id="sidebar">
             <div class="sidebar-header">
-                <h2>🎃 Кухонний Планувальник</h2>
+                <h2>🎃 Дім</h2>
                 <div class="user-badge">
                     <span>${currentUser.avatar || '👤'} ${currentUser.name}</span>
                     <span class="role-badge role-${todayRole.toLowerCase()}">${todayRole}</span>
