@@ -81,6 +81,13 @@ window.createSuppliesSection = function() {
             </div>
             
             <div class="content">
+                <div class="action-buttons-top">
+                    <button class="action-btn action-btn-primary" onclick="window.addToShoppingList()" ${!canEdit ? 'disabled title="Редагування недоступне"' : ''}>
+                        <span>🛒</span>
+                        <span>Додати в список покупок</span>
+                    </button>
+                </div>
+
                 <div class="supplies-legend">
                     <div class="legend-item">
                         <span class="legend-icon">🟢</span>
@@ -98,21 +105,6 @@ window.createSuppliesSection = function() {
 
                 <div id="suppliesList" class="supplies-categories">
                     <!-- Заповнюється динамічно -->
-                </div>
-
-                <div class="action-buttons">
-                    <button class="action-btn action-btn-primary" onclick="window.addToShoppingList()" ${!canEdit ? 'disabled title="Редагування недоступне"' : ''}>
-                        <span>🛒</span>
-                        <span>Додати в список покупок</span>
-                    </button>
-                    <button class="action-btn action-btn-primary" onclick="window.clearPurchased()" ${!canEdit ? 'disabled title="Редагування недоступне"' : ''}>
-                        <span>✓</span>
-                        <span>Очистити покупленне</span>
-                    </button>
-                    <button class="action-btn action-btn-secondary" onclick="window.clearAllChecked()" ${!canEdit ? 'disabled title="Редагування недоступне"' : ''}>
-                        <span>🗑️</span>
-                        <span>Видалити з покупок</span>
-                    </button>
                 </div>
             </div>
         </div>
