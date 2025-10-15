@@ -1,70 +1,4 @@
-// ===== TASKS FUNCTIONS (Internal - Auto-save only) =====
-
-// Внутрішня функція збереження (без UI)
-async function saveTasksToFirebaseInternal(username, userTasksState) {
-    if (!username || !userTasksState) return false;
-    
-    try {
-        await database.ref(`users/${username}/tasksState`).set(userTasksState);
-        await database.ref(`users/${username}/lastTasksUpdate`).set(new Date().toISOString());
-        console.log(`💾 Завдання користувача ${username} збережено в Firebase`);
-        return true;
-    } catch (error) {
-        console.error('❌ Помилка збереження завдань:', error);
-        return false;
-    }
-}
-
-// Внутрішня функція завантаження (без UI)
-async function loadTasksFromFirebaseInternal(username) {
-    if (!username) return null;
-    
-    try {
-        const snapshot = await database.ref(`users/${username}/tasksState`).once('value');
-        
-        if (snapshot.exists()) {
-            const data = snapshot.val();
-            console.log(`✅ Завдання користувача ${username} завантажено з Firebase`);
-            return data;
-        }
-        return null;
-    } catch (error) {
-        console.error('❌ Помилка завантаження завдань:', error);
-        return null;
-    }
-}
-
-// Автоматичне збереження завдань в Firebase (викликається при кожній зміні)
-window.autoSaveTasksToFirebase = async function() {
-    const currentUserObj = window.currentUser ? window.currentUser() : null;
-    if (!currentUserObj) return;
-    
-    const role = window.getCurrentRole ? window.getCurrentRole(currentUserObj.username) : null;
-    if (role === "Viewer") return; // Viewer не може зберігати
-    
-    const username = currentUserObj.username;
-    const userTasksState = window.tasksState[username] || {};
-    
-    if (!userTasksState || Object.keys(userTasksState).length === 0) return;
-
-    await saveTasksToFirebaseInternal(username, userTasksState);
-};
-
-// Автоматичне завантаження завдань при вході (викликається з login.js)
-window.autoLoadTasksOnLogin = async function(username) {
-    if (!username) return;
-    
-    const data = await loadTasksFromFirebaseInternal(username);
-    
-    if (data) {
-        if (!window.tasksState) window.tasksState = {};
-        window.tasksState[username] = data;
-        
-        if (typeof window.renderTasks === 'function') {
-            window.renderTasks();
-        }
-    }
-};// ===== FIREBASE CONFIGURATION =====
+// ===== FIREBASE CONFIGURATION =====
 
 const firebaseConfig = {
     apiKey: "AIzaSyBDpCzT9SzSJptn0LqPYP-CjRGn6p-JbW0",
@@ -139,7 +73,195 @@ function handleFirebaseError(error, operation) {
     }
 }
 
-// ===== GLOBAL SAVE/LOAD FUNCTIONS =====
+// ===== AUTO-SAVE FUNCTIONS (Internal) =====
+
+// Внутрішнє збереження завдань користувача
+async function saveTasksToFirebaseInternal(username, userTasksState) {
+    if (!username || !userTasksState) return false;
+    
+    try {
+        await database.ref(`users/${username}/tasksState`).set(userTasksState);
+        await database.ref(`users/${username}/lastTasksUpdate`).set(new Date().toISOString());
+        console.log(`💾 Завдання користувача ${username} збережено`);
+        return true;
+    } catch (error) {
+        console.error('❌ Помилка збереження завдань:', error);
+        return false;
+    }
+}
+
+// Внутрішнє завантаження завдань користувача
+async function loadTasksFromFirebaseInternal(username) {
+    if (!username) return null;
+    
+    try {
+        const snapshot = await database.ref(`users/${username}/tasksState`).once('value');
+        
+        if (snapshot.exists()) {
+            const data = snapshot.val();
+            console.log(`✅ Завдання користувача ${username} завантажено`);
+            return data;
+        }
+        return null;
+    } catch (error) {
+        console.error('❌ Помилка завантаження завдань:', error);
+        return null;
+    }
+}
+
+// ===== AUTO-SAVE WRAPPERS (Called from other modules) =====
+
+// Автозбереження завдань (викликається з tasks.js)
+window.autoSaveTasksToFirebase = async function() {
+    const currentUserObj = window.currentUser ? window.currentUser() : null;
+    if (!currentUserObj) return;
+    
+    const role = window.getCurrentRole ? window.getCurrentRole(currentUserObj.username) : null;
+    if (role === "Viewer") return;
+    
+    const username = currentUserObj.username;
+    const userTasksState = window.tasksState[username] || {};
+    
+    if (!userTasksState || Object.keys(userTasksState).length === 0) return;
+
+    await saveTasksToFirebaseInternal(username, userTasksState);
+};
+
+// Автозбереження розпорядку дня
+window.autoSaveDailySchedule = async function() {
+    const currentUserObj = window.currentUser ? window.currentUser() : null;
+    if (!currentUserObj) return;
+    
+    const role = window.getCurrentRole ? window.getCurrentRole(currentUserObj.username) : null;
+    if (role === "Viewer") return;
+    
+    try {
+        await database.ref('allData/dailySchedule').set(window.dailySchedule);
+        await database.ref('allData/lastUpdated').set(new Date().toISOString());
+        await database.ref('allData/lastUpdatedBy').set(currentUserObj.name);
+        console.log('💾 Розпорядок дня автозбережено');
+    } catch (error) {
+        console.error('❌ Помилка автозбереження розпорядку дня:', error);
+    }
+};
+
+// Автозбереження меню
+window.autoSaveMenu = async function() {
+    const currentUserObj = window.currentUser ? window.currentUser() : null;
+    if (!currentUserObj) return;
+    
+    const role = window.getCurrentRole ? window.getCurrentRole(currentUserObj.username) : null;
+    if (role === "Viewer") return;
+    
+    try {
+        await database.ref('allData/weeklyMenu').set(window.weeklyMenu);
+        await database.ref('allData/lastUpdated').set(new Date().toISOString());
+        await database.ref('allData/lastUpdatedBy').set(currentUserObj.name);
+        console.log('💾 Меню автозбережено');
+    } catch (error) {
+        console.error('❌ Помилка автозбереження меню:', error);
+    }
+};
+
+// Автозбереження запасів
+window.autoSaveSupplies = async function() {
+    const currentUserObj = window.currentUser ? window.currentUser() : null;
+    if (!currentUserObj) return;
+    
+    const role = window.getCurrentRole ? window.getCurrentRole(currentUserObj.username) : null;
+    if (role === "Viewer") return;
+    
+    const sanitizedSupplies = sanitizeFirebaseObject(window.suppliesStatus);
+    
+    try {
+        await database.ref('allData/supplies').set(sanitizedSupplies);
+        await database.ref('allData/lastUpdated').set(new Date().toISOString());
+        await database.ref('allData/lastUpdatedBy').set(currentUserObj.name);
+        console.log('💾 Запаси автозбережено');
+    } catch (error) {
+        console.error('❌ Помилка автозбереження запасів:', error);
+    }
+};
+
+// Автозбереження списку покупок
+window.autoSaveShoppingList = async function() {
+    const currentUserObj = window.currentUser ? window.currentUser() : null;
+    if (!currentUserObj) return;
+    
+    const role = window.getCurrentRole ? window.getCurrentRole(currentUserObj.username) : null;
+    if (role === "Viewer") return;
+    
+    try {
+        await database.ref('allData/shoppingList').set(window.shoppingList);
+        await database.ref('allData/lastUpdated').set(new Date().toISOString());
+        await database.ref('allData/lastUpdatedBy').set(currentUserObj.name);
+        console.log('💾 Список покупок автозбережено');
+    } catch (error) {
+        console.error('❌ Помилка автозбереження списку покупок:', error);
+    }
+};
+
+// ===== AUTO-LOAD ON LOGIN =====
+
+// Автозавантаження завдань при вході
+window.autoLoadTasksOnLogin = async function(username) {
+    if (!username) return;
+    
+    const data = await loadTasksFromFirebaseInternal(username);
+    
+    if (data) {
+        if (!window.tasksState) window.tasksState = {};
+        window.tasksState[username] = data;
+        console.log('✅ Завдання користувача завантажено');
+    }
+};
+
+// Автозавантаження всіх даних при вході
+window.autoLoadAllDataOnLogin = async function(username) {
+    if (!username) return;
+    
+    console.log('🔄 Автоматичне завантаження даних...');
+    
+    try {
+        const snapshot = await database.ref('allData').once('value');
+        
+        if (snapshot.exists()) {
+            const data = snapshot.val();
+            
+            // Завантажуємо всі дані
+            if (data.dailySchedule && Array.isArray(data.dailySchedule)) {
+                window.dailySchedule = data.dailySchedule;
+                console.log('✅ Розпорядок дня завантажено');
+            }
+
+            if (data.weeklyMenu && typeof data.weeklyMenu === 'object') {
+                window.weeklyMenu = data.weeklyMenu;
+                console.log('✅ Меню завантажено');
+            }
+
+            if (data.supplies && typeof data.supplies === 'object') {
+                window.suppliesStatus = data.supplies;
+                console.log('✅ Запаси завантажено');
+            }
+
+            if (data.shoppingList && typeof data.shoppingList === 'object') {
+                window.shoppingList = data.shoppingList;
+                console.log('✅ Список покупок завантажено');
+            }
+            
+            console.log('✅ Всі дані завантажено з Firebase');
+        } else {
+            console.log('ℹ️ Немає збережених даних у Firebase');
+        }
+    } catch (error) {
+        console.error('❌ Помилка автозавантаження даних:', error);
+    }
+    
+    // Завантажуємо завдання користувача
+    await window.autoLoadTasksOnLogin(username);
+};
+
+// ===== MANUAL SAVE/LOAD FUNCTIONS (With confirmation) =====
 
 window.saveAllToFirebase = async function() {
     const currentUserObj = window.currentUser ? window.currentUser() : null;
@@ -191,7 +313,7 @@ window.saveAllToFirebase = async function() {
             await saveTasksToFirebaseInternal(username, window.tasksState[username]);
         }
         
-        alert(`✅ Всі дані збережено в хмару!\n\nЗбережено користувачем: ${currentUserObj.name}\n\n💡 Підказка: Завдання тепер зберігаються автоматично!`);
+        alert(`✅ Всі дані збережено в хмару!\n\nЗбережено користувачем: ${currentUserObj.name}\n\n💡 Підказка: Дані автоматично зберігаються при кожній зміні!`);
     } catch (error) {
         handleFirebaseError(error, 'збереження');
     } finally {
@@ -268,7 +390,7 @@ window.loadAllFromFirebase = async function() {
             
             const lastUpdated = data.lastUpdated ? new Date(data.lastUpdated).toLocaleString('uk-UA') : 'невідомо';
             const updatedBy = data.lastUpdatedBy ? `\nОстаннє збереження: ${data.lastUpdatedBy}` : '';
-            alert(`✅ Всі дані завантажено з хмари!\n\nОстаннє оновлення: ${lastUpdated}${updatedBy}\n\n💡 Підказка: Завдання тепер зберігаються автоматично!`);
+            alert(`✅ Всі дані завантажено з хмари!\n\nОстаннє оновлення: ${lastUpdated}${updatedBy}`);
         } else {
             alert("Немає збережених даних у хмарі!");
         }
@@ -612,4 +734,4 @@ window.loadShopFromFirebase = async function() {
     }
 };
 
-console.log('✅ Firebase config завантажено (з підтримкою tasksState)');
+console.log('✅ Firebase config завантажено (з автозбереженням)');
