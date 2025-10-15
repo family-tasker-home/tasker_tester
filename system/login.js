@@ -260,61 +260,26 @@ function showAppContent() {
     } else {
         console.error('❌ Функція createMainApp не знайдена!');
     }
-}
-// Додати цю функцію після showAppContent():
-
-// Автоматичне завантаження завдань користувача при вході
-async function autoLoadUserTasks(username) {
-    try {
-        if (!window.database) return;
-        
-        const snapshot = await window.database.ref(`users/${username}/tasksState`).once('value');
-        
-        if (snapshot.exists()) {
-            const data = snapshot.val();
-            if (typeof data === 'object' && data !== null) {
-                if (!window.tasksState) window.tasksState = {};
-                window.tasksState[username] = data;
-                
-                console.log(`✅ Автоматично завантажено завдання користувача ${username}`);
-                
-                // Якщо рендер функція доступна - оновлюємо інтерфейс
-                if (typeof window.renderTasks === 'function') {
-                    window.renderTasks();
-                }
-            }
-        } else {
-            console.log(`ℹ️ У користувача ${username} ще немає збережених завдань`);
-        }
-    } catch (error) {
-        console.error('❌ Помилка автозавантаження завдань:', error);
-    }
-}
-
-// Оновити функцію showAppContent() - додати виклик автозавантаження:
-function showAppContent() {
-    const app = document.getElementById('app');
-    app.innerHTML = `
-        <div class="app-content visible">
-            <div id="mainAppContent"></div>
-        </div>
-    `;
     
-    // Викликаємо функцію створення структури з general.js
-    if (typeof window.createMainApp === 'function') {
-        window.createMainApp(currentUser, USERS);
-    } else {
-        console.error('❌ Функція createMainApp не знайдена!');
-    }
-    
-    // ДОДАТИ ЦЕЙ БЛОК:
-    // Автоматично завантажуємо завдання користувача з Firebase
+    // Автоматично завантажуємо всі дані з Firebase
     if (currentUser && currentUser.username) {
         setTimeout(() => {
-            autoLoadUserTasks(currentUser.username);
-        }, 1000); // Даємо час на ініціалізацію
+            if (typeof window.autoLoadAllDataOnLogin === 'function') {
+                window.autoLoadAllDataOnLogin(currentUser.username).then(() => {
+                    console.log('✅ Дані автоматично завантажено з Firebase');
+                    
+                    // Оновлюємо всі інтерфейси після завантаження
+                    if (typeof window.renderDailySchedule === 'function') window.renderDailySchedule();
+                    if (typeof window.renderTasks === 'function') window.renderTasks();
+                    if (typeof window.renderMenu === 'function') window.renderMenu();
+                    if (typeof window.renderSupplies === 'function') window.renderSupplies();
+                    if (typeof window.renderList === 'function') window.renderList();
+                });
+            }
+        }, 1500); // Даємо час на ініціалізацію всіх модулів
     }
 }
+
 // Вихід з системи
 window.logout = function() {
     if (confirm('Ви впевнені, що хочете вийти?')) {
@@ -366,4 +331,4 @@ window.canModifyData = canModifyData;
 window.canSaveToFirebase = canSaveToFirebase;
 window.currentUser = () => currentUser;
 
-console.log('✅ Login system завантажено (dynamic roles version)');
+console.log('✅ Login system завантажено (auto-load version)');
