@@ -228,6 +228,9 @@ window.autoSaveTasksToFirebase = async function() {
 };
 
 // Автозбереження розпорядку дня
+// ===== ОНОВЛЕНА ФУНКЦІЯ АВТОЗБЕРЕЖЕННЯ РОЗПОРЯДКУ ДНЯ =====
+
+// Автозбереження розпорядку дня (замінює стару версію в firebase_config.js)
 window.autoSaveDailySchedule = async function() {
     try {
         const currentUserObj = window.currentUser ? window.currentUser() : null;
@@ -236,25 +239,83 @@ window.autoSaveDailySchedule = async function() {
             return;
         }
         
-        const role = window.getCurrentRole ? window.getCurrentRole(currentUserObj.username) : null;
-        if (role === "Viewer") {
-            console.log('⚠️ Viewer не може зберігати дані');
-            return;
-        }
-        
         const username = currentUserObj.username;
         const userSchedule = window.dailyScheduleState ? window.dailyScheduleState[username] : null;
         
+        // Перевіряємо що є дані для збереження
         if (!userSchedule || userSchedule.length === 0) {
             console.log('⚠️ Немає розпорядку для збереження');
             return;
         }
 
-        await saveDailyScheduleToFirebaseInternal(username, userSchedule);
+        console.log(`💾 Збереження розпорядку для ${username}...`, userSchedule);
+
+        // Зберігаємо в Firebase
+        const sanitizedUsername = username.replace(/[.#$/[\]]/g, '_');
+        const ref = window.database.ref(`users/${sanitizedUsername}/dailySchedule`);
+        await ref.set(userSchedule);
+        
+        // Оновлюємо час останнього збереження
+        const updateRef = window.database.ref(`users/${sanitizedUsername}/lastScheduleUpdate`);
+        await updateRef.set(new Date().toISOString());
+        
+        console.log(`✅ Розпорядок для ${username} успішно збережено в Firebase`);
+        
+        // Показуємо статус збереження (якщо функція доступна)
+        if (typeof window.showSaveStatus === 'function') {
+            window.showSaveStatus('💾 Розпорядок збережено!', 'success');
+        }
+        
+        return true;
     } catch (error) {
         console.error('❌ Помилка автозбереження розпорядку:', error);
+        
+        // Показуємо помилку
+        if (typeof window.showSaveStatus === 'function') {
+            window.showSaveStatus('❌ Помилка збереження!', 'error');
+        }
+        
+        return false;
     }
 };
+
+// Автозавантаження розпорядку дня при вході (замінює стару версію)
+window.autoLoadDailyScheduleOnLogin = async function(username) {
+    if (!username) return;
+    
+    try {
+        console.log(`🔄 Завантаження розпорядку для ${username}...`);
+        
+        const sanitizedUsername = username.replace(/[.#$/[\]]/g, '_');
+        const ref = window.database.ref(`users/${sanitizedUsername}/dailySchedule`);
+        const snapshot = await ref.once('value');
+        
+        if (snapshot.exists()) {
+            const data = snapshot.val();
+            
+            if (!window.dailyScheduleState) {
+                window.dailyScheduleState = {};
+            }
+            
+            window.dailyScheduleState[username] = data;
+            console.log(`✅ Розпорядок для ${username} завантажено:`, data);
+            
+            // Оновлюємо інтерфейс якщо це поточний користувач
+            const currentUser = window.currentUser ? window.currentUser() : null;
+            if (currentUser && currentUser.username === username) {
+                if (typeof window.renderDailySchedule === 'function') {
+                    window.renderDailySchedule();
+                }
+            }
+        } else {
+            console.log(`ℹ️ Немає збереженого розпорядку для ${username}`);
+        }
+    } catch (error) {
+        console.error('❌ Помилка автозавантаження розпорядку:', error);
+    }
+};
+
+console.log('✅ Оновлені функції автозбереження розпорядку завантажено');
 
 // Автозбереження меню
 window.autoSaveMenu = async function() {
