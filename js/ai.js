@@ -1,5 +1,5 @@
 // AI Assistant - Джарвіс (Gemini API через Vercel)
-// Кухонний асистент і домашній управитель з доступом до бази даних
+// Кожен користувач має свій виділений API ключ
 
 let currentApiKeyIndex = 0;
 let chatHistory = [];
@@ -16,6 +16,12 @@ async function loadUserPrompt() {
         }
 
         const username = currentUser.username || 'Анонім';
+        
+        // Отримуємо API ключ індекс для користувача
+        if (typeof window.getUserApiKeyIndex === 'function') {
+            currentApiKeyIndex = window.getUserApiKeyIndex(username);
+            console.log(`🔑 Користувач ${username} використовує API ключ #${currentApiKeyIndex}`);
+        }
         
         // Завантажуємо промпт з API
         const response = await fetch(`/api/prompts?username=${encodeURIComponent(username)}`);
@@ -146,7 +152,9 @@ async function sendMessageToAI(message) {
             ? API_ENDPOINT 
             : '/api/gemini';
         
-        // Відправляємо запит через Vercel API
+        console.log(`📤 Відправка запиту з API ключем #${currentApiKeyIndex}`);
+        
+        // Відправляємо запит через Vercel API з виділеним ключем користувача
         const response = await fetch(endpoint, {
             method: 'POST',
             headers: { 
@@ -154,7 +162,7 @@ async function sendMessageToAI(message) {
             },
             body: JSON.stringify({
                 contents: contents,
-                apiKeyIndex: currentApiKeyIndex,
+                apiKeyIndex: currentApiKeyIndex, // Використовуємо виділений ключ користувача
                 generationConfig: {
                     temperature: 0.9,
                     topK: 40,
@@ -175,9 +183,9 @@ async function sendMessageToAI(message) {
             throw new Error('Некоректна відповідь від Gemini API');
         }
         
-        // Оновлюємо індекс API якщо прийшов з сервера
-        if (data.usedApiIndex !== undefined) {
-            currentApiKeyIndex = data.usedApiIndex;
+        // Логуємо інформацію про використаний ключ
+        if (data.assignedUser) {
+            console.log(`✅ Відповідь отримана від ключа #${data.usedApiIndex} (${data.assignedUser})`);
         }
         
         let aiResponse = data.candidates[0].content.parts[0].text;
@@ -187,75 +195,6 @@ async function sendMessageToAI(message) {
         const commandsExecuted = executeCommands(aiResponse);
         if (commandsExecuted.length > 0) {
             console.log('✅ Виконано команд:', commandsExecuted.length);
-            
-            // Видаляємо ВСІХ команд з відповіді
-            commandsExecuted.forEach(cmd => {
-                aiResponse = aiResponse.replace(cmd.original, '');
-            });
-            aiResponse = aiResponse.trim();
-            
-            // Перевірка команд перегляду даних
-            const viewCommands = commandsExecuted.filter(cmd => cmd.type.startsWith('ПЕРЕГЛЯНУТИ_'));
-            
-            if (viewCommands.length > 0) {
-                chatHistory.push({ role: 'user', content: message });
-                if (aiResponse) {
-                    chatHistory.push({ role: 'assistant', content: aiResponse });
-                }
-                
-                let freshDataMessage = '📊 Оновлені дані:\n\n';
-                for (const cmd of viewCommands) {
-                    freshDataMessage += cmd.data + '\n\n';
-                }
-                
-                chatHistory.push({ role: 'user', content: freshDataMessage });
-                
-                chatContainer.removeChild(loadingMessage);
-                if (aiResponse) {
-                    chatContainer.appendChild(createMessageElement(aiResponse, 'assistant'));
-                }
-                chatContainer.appendChild(createMessageElement(freshDataMessage, 'user'));
-                chatContainer.scrollTop = chatContainer.scrollHeight;
-                
-                const newLoadingMessage = createMessageElement('Джарвіс аналізує оновлені дані...', 'assistant', true);
-                chatContainer.appendChild(newLoadingMessage);
-                chatContainer.scrollTop = chatContainer.scrollHeight;
-                
-                const followUpContents = buildConversationHistory('Проаналізуй ці дані та дай відповідь на моє питання');
-                
-                const followUpResponse = await fetch(endpoint, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        contents: followUpContents,
-                        apiKeyIndex: currentApiKeyIndex,
-                        generationConfig: {
-                            temperature: 0.9,
-                            topK: 40,
-                            topP: 0.95,
-                            maxOutputTokens: 2048,
-                        }
-                    })
-                });
-                
-                if (!followUpResponse.ok) throw new Error(`HTTP error! status: ${followUpResponse.status}`);
-                
-                const followUpData = await followUpResponse.json();
-                if (!followUpData.candidates?.[0]?.content) throw new Error('Некоректна відповідь від Gemini API');
-                
-                let finalResponse = followUpData.candidates[0].content.parts[0].text;
-                finalResponse = cleanMarkdown(finalResponse);
-                
-                chatContainer.removeChild(newLoadingMessage);
-                chatContainer.appendChild(createMessageElement(finalResponse, 'assistant'));
-                chatContainer.scrollTop = chatContainer.scrollHeight;
-                
-                chatHistory.push({ role: 'assistant', content: finalResponse });
-                if (chatHistory.length > 20) chatHistory = chatHistory.slice(-20);
-                
-                saveHistoryToCache();
-                return;
-            }
             
             // АВТОМАТИЧНЕ ЗБЕРЕЖЕННЯ В FIREBASE БЕЗ PROMPT
             const modifyCommands = commandsExecuted.filter(cmd => !cmd.type.startsWith('ПЕРЕГЛЯНУТИ_'));
@@ -281,11 +220,6 @@ async function sendMessageToAI(message) {
     } catch (error) {
         console.error('Error:', error);
         if (chatContainer.contains(loadingMessage)) chatContainer.removeChild(loadingMessage);
-        
-        // Якщо є кілька API, пробуємо наступний
-        if (typeof data !== 'undefined' && data.totalApis && data.totalApis > 1) {
-            currentApiKeyIndex = (currentApiKeyIndex + 1) % data.totalApis;
-        }
         
         showError(getErrorMessage(error));
     }
@@ -376,6 +310,8 @@ function getErrorMessage(error) {
         msg += 'Перевищено ліміт запитів. Спробуйте через хвилину.';
     } else if (error.message.includes('No API keys configured')) {
         msg += 'API ключі не налаштовані на сервері. Зверніться до адміністратора.';
+    } else if (error.message.includes('Invalid API key index')) {
+        msg += 'Невірний індекс API ключа. Зверніться до адміністратора.';
     } else {
         msg += error.message;
     }
@@ -430,7 +366,7 @@ async function initChat() {
     const chatContainer = document.getElementById('chatMessages');
     if (!chatContainer) return;
 
-    // Завантажуємо промпт користувача
+    // Завантажуємо промпт користувача і встановлюємо API ключ
     await loadUserPrompt();
 
     loadHistoryFromCache();
@@ -774,4 +710,74 @@ window.clearChat = clearChat;
 window.initChat = initChat;
 window.updateJarvisContext = updateContext;
 
-console.log('✅ Джарвіс з Vercel API завантажено');
+console.log('✅ Джарвіс з виділеними API ключами завантажено');
+ Видаляємо ВСІХ команд з відповіді
+            commandsExecuted.forEach(cmd => {
+                aiResponse = aiResponse.replace(cmd.original, '');
+            });
+            aiResponse = aiResponse.trim();
+            
+            // Перевірка команд перегляду даних
+            const viewCommands = commandsExecuted.filter(cmd => cmd.type.startsWith('ПЕРЕГЛЯНУТИ_'));
+            
+            if (viewCommands.length > 0) {
+                chatHistory.push({ role: 'user', content: message });
+                if (aiResponse) {
+                    chatHistory.push({ role: 'assistant', content: aiResponse });
+                }
+                
+                let freshDataMessage = '📊 Оновлені дані:\n\n';
+                for (const cmd of viewCommands) {
+                    freshDataMessage += cmd.data + '\n\n';
+                }
+                
+                chatHistory.push({ role: 'user', content: freshDataMessage });
+                
+                chatContainer.removeChild(loadingMessage);
+                if (aiResponse) {
+                    chatContainer.appendChild(createMessageElement(aiResponse, 'assistant'));
+                }
+                chatContainer.appendChild(createMessageElement(freshDataMessage, 'user'));
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+                
+                const newLoadingMessage = createMessageElement('Джарвіс аналізує оновлені дані...', 'assistant', true);
+                chatContainer.appendChild(newLoadingMessage);
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+                
+                const followUpContents = buildConversationHistory('Проаналізуй ці дані та дай відповідь на моє питання');
+                
+                const followUpResponse = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: followUpContents,
+                        apiKeyIndex: currentApiKeyIndex, // Той самий виділений ключ
+                        generationConfig: {
+                            temperature: 0.9,
+                            topK: 40,
+                            topP: 0.95,
+                            maxOutputTokens: 2048,
+                        }
+                    })
+                });
+                
+                if (!followUpResponse.ok) throw new Error(`HTTP error! status: ${followUpResponse.status}`);
+                
+                const followUpData = await followUpResponse.json();
+                if (!followUpData.candidates?.[0]?.content) throw new Error('Некоректна відповідь від Gemini API');
+                
+                let finalResponse = followUpData.candidates[0].content.parts[0].text;
+                finalResponse = cleanMarkdown(finalResponse);
+                
+                chatContainer.removeChild(newLoadingMessage);
+                chatContainer.appendChild(createMessageElement(finalResponse, 'assistant'));
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+                
+                chatHistory.push({ role: 'assistant', content: finalResponse });
+                if (chatHistory.length > 20) chatHistory = chatHistory.slice(-20);
+                
+                saveHistoryToCache();
+                return;
+            }
+            
+            //
