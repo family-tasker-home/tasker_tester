@@ -38,49 +38,34 @@ function sanitizeFirebaseObject(obj) {
     return sanitized;
 }
 
-// Хешування коду (простий варіант для родинного сайту)
-function hashCode(code) {
-    let hash = 0;
-    for (let i = 0; i < code.length; i++) {
-        const char = code.charCodeAt(i);
-        hash = ((hash << 5) - hash) + char;
-        hash = hash & hash;
-    }
-    return hash.toString();
-}
-
-// Перевірка секретного коду через Firebase
-async function verifySecretCode(inputCode) {
-    try {
-        const snapshot = await database.ref('secretCode').once('value');
-        const storedHash = snapshot.val();
-        
-        if (!storedHash) {
-            console.error('❌ Секретний код не налаштований в базі!');
-            return false;
-        }
-        
-        return hashCode(inputCode) === storedHash;
-    } catch (error) {
-        console.error('Помилка перевірки коду:', error);
-        return false;
-    }
-}
-
-// Встановлення секретного коду (викликати один раз для налаштування)
-window.setupSecretCode = async function(newCode) {
-    const adminPassword = prompt("Введіть адмін-пароль для налаштування коду:");
-    if (adminPassword !== "admin2024") {
-        alert("❌ Неправильний адмін-пароль!");
-        return;
+// Перевірка секретного коду користувача
+async function verifySecretCode(inputCode, username = null) {
+    // Якщо не вказано користувача, беремо поточного
+    if (!username && window.currentUser) {
+        username = window.currentUser().username;
     }
     
-    try {
-        await database.ref('secretCode').set(hashCode(newCode));
-        alert("✅ Секретний код встановлено!");
-    } catch (error) {
-        alert("❌ Помилка: " + error.message);
+    if (!username || !USERS[username]) {
+        console.error('❌ Користувач не знайдений!');
+        return false;
     }
+    
+    const user = USERS[username];
+    const role = window.getCurrentRole ? window.getCurrentRole(username) : user.role;
+    
+    // Перевіряємо чи користувач має права зберігати
+    if (role === "Viewer") {
+        console.error('❌ У вас немає прав для збереження даних сьогодні!');
+        return false;
+    }
+    
+    // Перевіряємо код
+    return inputCode === user.secretCode;
+}
+
+// Встановлення секретного коду (тепер не потрібно - коди в profiles.json)
+window.setupSecretCode = async function(newCode) {
+    alert("⚠️ Секретні коди налаштовуються в файлі system/profiles.json");
 };
 
 // Обробка помилок Firebase
@@ -99,10 +84,24 @@ function handleFirebaseError(error, operation) {
 // ===== GLOBAL SAVE/LOAD FUNCTIONS =====
 
 window.saveAllToFirebase = async function() {
-    const code = prompt("🔐 Введіть секретний код для збереження:");
+    const currentUserObj = window.currentUser ? window.currentUser() : null;
+    if (!currentUserObj) {
+        alert("❌ Користувач не визначений!");
+        return;
+    }
+    
+    // Перевіряємо права
+    const role = window.getCurrentRole(currentUserObj.username);
+    if (role === "Viewer") {
+        const roleInfo = window.getTodayRoleInfo(currentUserObj.username);
+        alert(`❌ У вас немає прав для збереження даних!\n\nВаша роль сьогодні (${roleInfo.dayName}): ${role}\n\nВи можете зберігати дані тільки в свої робочі дні.`);
+        return;
+    }
+    
+    const code = prompt("🔐 Введіть ваш секретний код для збереження:");
     if (!code) return;
     
-    const isValid = await verifySecretCode(code);
+    const isValid = await verifySecretCode(code, currentUserObj.username);
     if (!isValid) {
         alert("❌ Неправильний код!");
         return;
@@ -122,12 +121,13 @@ window.saveAllToFirebase = async function() {
         weeklyMenu: window.weeklyMenu || {},
         supplies: sanitizeFirebaseObject(window.suppliesStatus || {}),
         shoppingList: window.shoppingList || {},
-        lastUpdated: new Date().toISOString()
+        lastUpdated: new Date().toISOString(),
+        lastUpdatedBy: currentUserObj.name
     };
 
     try {
         await database.ref('allData').set(allData);
-        alert("✅ Всі дані збережено в хмару!");
+        alert(`✅ Всі дані збережено в хмару!\n\nЗбережено користувачем: ${currentUserObj.name}`);
     } catch (error) {
         handleFirebaseError(error, 'збереження');
     } finally {
@@ -192,7 +192,8 @@ window.loadAllFromFirebase = async function() {
             }
             
             const lastUpdated = data.lastUpdated ? new Date(data.lastUpdated).toLocaleString('uk-UA') : 'невідомо';
-            alert(`✅ Всі дані завантажено з хмари!\n\nОстаннє оновлення: ${lastUpdated}`);
+            const updatedBy = data.lastUpdatedBy ? `\nОстаннє збереження: ${data.lastUpdatedBy}` : '';
+            alert(`✅ Всі дані завантажено з хмари!\n\nОстаннє оновлення: ${lastUpdated}${updatedBy}`);
         } else {
             alert("Немає збережених даних у хмарі!");
         }
@@ -209,10 +210,23 @@ window.loadAllFromFirebase = async function() {
 // ===== INDIVIDUAL SAVE/LOAD FUNCTIONS =====
 
 window.saveDailyToFirebase = async function() {
-    const code = prompt("🔐 Введіть секретний код для збереження:");
+    const currentUserObj = window.currentUser ? window.currentUser() : null;
+    if (!currentUserObj) {
+        alert("❌ Користувач не визначений!");
+        return;
+    }
+    
+    const role = window.getCurrentRole(currentUserObj.username);
+    if (role === "Viewer") {
+        const roleInfo = window.getTodayRoleInfo(currentUserObj.username);
+        alert(`❌ У вас немає прав для збереження даних!\n\nВаша роль сьогодні (${roleInfo.dayName}): ${role}`);
+        return;
+    }
+    
+    const code = prompt("🔐 Введіть ваш секретний код для збереження:");
     if (!code) return;
     
-    const isValid = await verifySecretCode(code);
+    const isValid = await verifySecretCode(code, currentUserObj.username);
     if (!isValid) {
         alert("❌ Неправильний код!");
         return;
@@ -226,6 +240,7 @@ window.saveDailyToFirebase = async function() {
     try {
         await database.ref('allData/dailySchedule').set(window.dailySchedule);
         await database.ref('allData/lastUpdated').set(new Date().toISOString());
+        await database.ref('allData/lastUpdatedBy').set(currentUserObj.name);
         alert("✅ Розпорядок дня збережено в хмару!");
     } catch (error) {
         handleFirebaseError(error, 'збереження');
@@ -259,10 +274,23 @@ window.loadDailyFromFirebase = async function() {
 };
 
 window.saveTasksToFirebase = async function() {
-    const code = prompt("🔐 Введіть секретний код для збереження:");
+    const currentUserObj = window.currentUser ? window.currentUser() : null;
+    if (!currentUserObj) {
+        alert("❌ Користувач не визначений!");
+        return;
+    }
+    
+    const role = window.getCurrentRole(currentUserObj.username);
+    if (role === "Viewer") {
+        const roleInfo = window.getTodayRoleInfo(currentUserObj.username);
+        alert(`❌ У вас немає прав для збереження даних!\n\nВаша роль сьогодні (${roleInfo.dayName}): ${role}`);
+        return;
+    }
+    
+    const code = prompt("🔐 Введіть ваш секретний код для збереження:");
     if (!code) return;
     
-    const isValid = await verifySecretCode(code);
+    const isValid = await verifySecretCode(code, currentUserObj.username);
     if (!isValid) {
         alert("❌ Неправильний код!");
         return;
@@ -276,6 +304,7 @@ window.saveTasksToFirebase = async function() {
     try {
         await database.ref('allData/tasks').set(window.tasks);
         await database.ref('allData/lastUpdated').set(new Date().toISOString());
+        await database.ref('allData/lastUpdatedBy').set(currentUserObj.name);
         alert("✅ Завдання збережено в хмару!");
     } catch (error) {
         handleFirebaseError(error, 'збереження');
@@ -309,10 +338,23 @@ window.loadTasksFromFirebase = async function() {
 };
 
 window.saveMenuToFirebase = async function() {
-    const code = prompt("🔐 Введіть секретний код для збереження:");
+    const currentUserObj = window.currentUser ? window.currentUser() : null;
+    if (!currentUserObj) {
+        alert("❌ Користувач не визначений!");
+        return;
+    }
+    
+    const role = window.getCurrentRole(currentUserObj.username);
+    if (role === "Viewer") {
+        const roleInfo = window.getTodayRoleInfo(currentUserObj.username);
+        alert(`❌ У вас немає прав для збереження даних!\n\nВаша роль сьогодні (${roleInfo.dayName}): ${role}`);
+        return;
+    }
+    
+    const code = prompt("🔐 Введіть ваш секретний код для збереження:");
     if (!code) return;
     
-    const isValid = await verifySecretCode(code);
+    const isValid = await verifySecretCode(code, currentUserObj.username);
     if (!isValid) {
         alert("❌ Неправильний код!");
         return;
@@ -332,6 +374,7 @@ window.saveMenuToFirebase = async function() {
     try {
         await database.ref('allData/weeklyMenu').set(window.weeklyMenu);
         await database.ref('allData/lastUpdated').set(new Date().toISOString());
+        await database.ref('allData/lastUpdatedBy').set(currentUserObj.name);
         alert("✅ Меню збережено в хмару!");
     } catch (error) {
         handleFirebaseError(error, 'збереження');
@@ -365,10 +408,23 @@ window.loadMenuFromFirebase = async function() {
 };
 
 window.saveSuppliestoFirebase = async function() {
-    const code = prompt("🔐 Введіть секретний код для збереження:");
+    const currentUserObj = window.currentUser ? window.currentUser() : null;
+    if (!currentUserObj) {
+        alert("❌ Користувач не визначений!");
+        return;
+    }
+    
+    const role = window.getCurrentRole(currentUserObj.username);
+    if (role === "Viewer") {
+        const roleInfo = window.getTodayRoleInfo(currentUserObj.username);
+        alert(`❌ У вас немає прав для збереження даних!\n\nВаша роль сьогодні (${roleInfo.dayName}): ${role}`);
+        return;
+    }
+    
+    const code = prompt("🔐 Введіть ваш секретний код для збереження:");
     if (!code) return;
     
-    const isValid = await verifySecretCode(code);
+    const isValid = await verifySecretCode(code, currentUserObj.username);
     if (!isValid) {
         alert("❌ Неправильний код!");
         return;
@@ -384,6 +440,7 @@ window.saveSuppliestoFirebase = async function() {
     try {
         await database.ref('allData/supplies').set(sanitizedSupplies);
         await database.ref('allData/lastUpdated').set(new Date().toISOString());
+        await database.ref('allData/lastUpdatedBy').set(currentUserObj.name);
         alert("✅ Запаси збережено в хмару!");
     } catch (error) {
         handleFirebaseError(error, 'збереження');
@@ -417,10 +474,23 @@ window.loadSuppliesFromFirebase = async function() {
 };
 
 window.saveShopToFirebase = async function() {
-    const code = prompt("🔐 Введіть секретний код для збереження:");
+    const currentUserObj = window.currentUser ? window.currentUser() : null;
+    if (!currentUserObj) {
+        alert("❌ Користувач не визначений!");
+        return;
+    }
+    
+    const role = window.getCurrentRole(currentUserObj.username);
+    if (role === "Viewer") {
+        const roleInfo = window.getTodayRoleInfo(currentUserObj.username);
+        alert(`❌ У вас немає прав для збереження даних!\n\nВаша роль сьогодні (${roleInfo.dayName}): ${role}`);
+        return;
+    }
+    
+    const code = prompt("🔐 Введіть ваш секретний код для збереження:");
     if (!code) return;
     
-    const isValid = await verifySecretCode(code);
+    const isValid = await verifySecretCode(code, currentUserObj.username);
     if (!isValid) {
         alert("❌ Неправильний код!");
         return;
@@ -434,6 +504,7 @@ window.saveShopToFirebase = async function() {
     try {
         await database.ref('allData/shoppingList').set(window.shoppingList);
         await database.ref('allData/lastUpdated').set(new Date().toISOString());
+        await database.ref('allData/lastUpdatedBy').set(currentUserObj.name);
         alert("✅ Список покупок збережено в хмару!");
     } catch (error) {
         handleFirebaseError(error, 'збереження');
@@ -466,4 +537,4 @@ window.loadShopFromFirebase = async function() {
     }
 };
 
-console.log('✅ Firebase config завантажено (secure version with secret code)');
+console.log('✅ Firebase config завантажено (dynamic roles with individual secret codes)');
