@@ -285,60 +285,12 @@ body::before {
     border-top: 2px solid #cc5500;
 }
 
-.global-save-btn,
-.global-load-btn {
+.global-actions-logout {
     width: 100%;
-    padding: 12px;
-    border-radius: 10px;
-    font-size: 1em;
-    font-weight: bold;
-    cursor: pointer;
-    transition: var(--transition-smooth);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    border: 2px solid;
-}
-
-.global-save-btn {
-    background: linear-gradient(135deg, #4a3d70 0%, #2d1b4e 100%);
-    border-color: #2d1b4e;
-    color: #d0d0d0;
-}
-
-.global-save-btn:hover {
-    box-shadow: 0 5px 15px rgba(45, 27, 78, 0.6);
-    transform: translateY(-2px);
-}
-
-.global-save-btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    background: #333333 !important;
-}
-
-.global-save-btn:disabled:hover {
-    transform: none !important;
-    box-shadow: none !important;
-}
-
-.global-load-btn {
-    background: linear-gradient(135deg, #004d40 0%, #003d33 100%);
-    border-color: #003d33;
-    color: #d0d0d0;
-}
-
-.global-load-btn:hover {
-    box-shadow: 0 5px 15px rgba(0, 77, 64, 0.6);
-    transform: translateY(-2px);
-}
-
-.global-actions .logout-btn {
+    padding: 12px 20px;
     background: linear-gradient(135deg, #8b0000, #5c0000);
     color: white;
     border: none;
-    padding: 12px 20px;
     border-radius: 10px;
     cursor: pointer;
     font-size: 1em;
@@ -348,11 +300,9 @@ body::before {
     align-items: center;
     justify-content: center;
     gap: 10px;
-    width: 100%;
-    margin-top: 10px;
 }
 
-.global-actions .logout-btn:hover {
+.global-actions-logout:hover {
     background: linear-gradient(135deg, #5c0000, #3c0000);
     transform: translateY(-2px);
     box-shadow: 0 5px 15px rgba(139, 0, 0, 0.3);
