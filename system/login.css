@@ -265,3 +265,8 @@
 .app-content.visible {
     display: block;
 }
+
+/* Hide sidebar footer */
+.sidebar-footer {
+    display: none;
+}
