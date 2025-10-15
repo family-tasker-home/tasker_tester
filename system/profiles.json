@@ -1,0 +1,100 @@
+{
+  "Admin": {
+    "password": "admin_777",
+    "secretCode": "dev2024",
+    "role": "Dev",
+    "name": "Адміністратор",
+    "avatar": "👑",
+    "promptFile": "admin",
+    "schedule": {
+      "monday": "Dev",
+      "tuesday": "Dev",
+      "wednesday": "Dev",
+      "thursday": "Dev",
+      "friday": "Dev",
+      "saturday": "Dev",
+      "sunday": "Dev"
+    }
+  },
+  "Настя": {
+    "password": "nastya123",
+    "secretCode": "nastya_kitchen",
+    "name": "Настя",
+    "avatar": "👩",
+    "promptFile": "nastya",
+    "schedule": {
+      "monday": "Кладовка",
+      "tuesday": "Viewer",
+      "wednesday": "Viewer",
+      "thursday": "Кухня",
+      "friday": "Viewer",
+      "saturday": "Viewer",
+      "sunday": "Ванна"
+    }
+  },
+  "Микола": {
+    "password": "mykola",
+    "secretCode": "mykola_home",
+    "name": "Микола",
+    "avatar": "👨",
+    "promptFile": "mykola",
+    "schedule": {
+      "monday": "Viewer",
+      "tuesday": "Viewer",
+      "wednesday": "Кладовка",
+      "thursday": "Viewer",
+      "friday": "Ванна",
+      "saturday": "Кухня",
+      "sunday": "Viewer"
+    }
+  },
+  "Лев": {
+    "password": "lev_noob",
+    "secretCode": "lev_power",
+    "name": "Лев",
+    "avatar": "🦁",
+    "promptFile": "lev",
+    "schedule": {
+      "monday": "Viewer",
+      "tuesday": "Viewer",
+      "wednesday": "Ванна",
+      "thursday": "Viewer",
+      "friday": "Кладовка",
+      "saturday": "Viewer",
+      "sunday": "Кухня"
+    }
+  },
+  "Ярик": {
+    "password": "yarik_noob",
+    "secretCode": "yarik_super",
+    "name": "Ярик",
+    "avatar": "⚡",
+    "promptFile": "yarik",
+    "schedule": {
+      "monday": "Ванна",
+      "tuesday": "Viewer",
+      "wednesday": "Кухня",
+      "thursday": "Viewer",
+      "friday": "Viewer",
+      "saturday": "Viewer",
+      "sunday": "Кладовка"
+    }
+  },
+  "Анонім": {
+    "password": "",
+    "secretCode": "",
+    "role": "Viewer",
+    "name": "Анонім",
+    "avatar": "👤",
+    "promptFile": "base_prompt",
+    "schedule": {
+      "monday": "Viewer",
+      "tuesday": "Viewer",
+      "wednesday": "Viewer",
+      "thursday": "Viewer",
+      "friday": "Viewer",
+      "saturday": "Viewer",
+      "sunday": "Viewer"
+    }
+  }
+}
