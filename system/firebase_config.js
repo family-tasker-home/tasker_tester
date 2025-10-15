@@ -145,6 +145,57 @@ async function loadTasksFromFirebaseInternal(username) {
     }
 }
 
+// Внутрішнє збереження розпорядку дня користувача
+async function saveDailyScheduleToFirebaseInternal(username, userSchedule) {
+    if (!username || !userSchedule) {
+        console.log('⚠️ Немає даних для збереження розпорядку');
+        return false;
+    }
+    
+    // Валідація: перевіряємо що є хоч щось для збереження
+    if (!isValidData(userSchedule)) {
+        console.log('⚠️ Розпорядок порожній, пропускаємо збереження');
+        return false;
+    }
+    
+    try {
+        const sanitizedUsername = sanitizeFirebaseKey(username);
+        const ref = database.ref(`users/${sanitizedUsername}/dailySchedule`);
+        await ref.set(userSchedule);
+        
+        const updateRef = database.ref(`users/${sanitizedUsername}/lastScheduleUpdate`);
+        await updateRef.set(new Date().toISOString());
+        
+        console.log(`💾 Розпорядок дня користувача ${username} збережено`);
+        return true;
+    } catch (error) {
+        console.error('❌ Помилка збереження розпорядку:', error);
+        handleFirebaseError(error, 'збереження розпорядку');
+        return false;
+    }
+}
+
+// Внутрішнє завантаження розпорядку дня користувача
+async function loadDailyScheduleFromFirebaseInternal(username) {
+    if (!username) return null;
+    
+    try {
+        const sanitizedUsername = sanitizeFirebaseKey(username);
+        const ref = database.ref(`users/${sanitizedUsername}/dailySchedule`);
+        const snapshot = await ref.once('value');
+        
+        if (snapshot.exists()) {
+            const data = snapshot.val();
+            console.log(`✅ Розпорядок дня користувача ${username} завантажено`);
+            return data;
+        }
+        return null;
+    } catch (error) {
+        console.error('❌ Помилка завантаження розпорядку:', error);
+        return null;
+    }
+}
+
 // ===== AUTO-SAVE WRAPPERS (Called from other modules) =====
 
 // Автозбереження завдань
@@ -180,27 +231,28 @@ window.autoSaveTasksToFirebase = async function() {
 window.autoSaveDailySchedule = async function() {
     try {
         const currentUserObj = window.currentUser ? window.currentUser() : null;
-        if (!currentUserObj) return;
+        if (!currentUserObj) {
+            console.log('⚠️ Користувач не авторизований');
+            return;
+        }
         
         const role = window.getCurrentRole ? window.getCurrentRole(currentUserObj.username) : null;
-        if (role === "Viewer") return;
+        if (role === "Viewer") {
+            console.log('⚠️ Viewer не може зберігати дані');
+            return;
+        }
         
-        const schedule = window.dailySchedule || [];
+        const username = currentUserObj.username;
+        const userSchedule = window.dailyScheduleState ? window.dailyScheduleState[username] : null;
         
-        // Зберігаємо або null якщо порожньо (дозволено правилами)
-        const scheduleRef = database.ref('allData/dailySchedule');
-        await scheduleRef.set(schedule.length > 0 ? schedule : null);
-        
-        const updateRef = database.ref('allData/lastUpdated');
-        await updateRef.set(new Date().toISOString());
-        
-        const userRef = database.ref('allData/lastUpdatedBy');
-        await userRef.set(currentUserObj.name);
-        
-        console.log('💾 Розпорядок дня автозбережено');
+        if (!userSchedule || userSchedule.length === 0) {
+            console.log('⚠️ Немає розпорядку для збереження');
+            return;
+        }
+
+        await saveDailyScheduleToFirebaseInternal(username, userSchedule);
     } catch (error) {
-        console.error('❌ Помилка автозбереження розпорядку дня:', error);
-        handleFirebaseError(error, 'автозбереження розпорядку');
+        console.error('❌ Помилка автозбереження розпорядку:', error);
     }
 };
 
@@ -316,6 +368,23 @@ window.autoLoadTasksOnLogin = async function(username) {
     }
 };
 
+// Автозавантаження розпорядку дня при вході
+window.autoLoadDailyScheduleOnLogin = async function(username) {
+    if (!username) return;
+    
+    try {
+        const data = await loadDailyScheduleFromFirebaseInternal(username);
+        
+        if (data) {
+            if (!window.dailyScheduleState) window.dailyScheduleState = {};
+            window.dailyScheduleState[username] = data;
+            console.log('✅ Розпорядок дня користувача завантажено');
+        }
+    } catch (error) {
+        console.error('❌ Помилка автозавантаження розпорядку:', error);
+    }
+};
+
 // Автозавантаження всіх даних при вході
 window.autoLoadAllDataOnLogin = async function(username) {
     if (!username) return;
@@ -327,12 +396,6 @@ window.autoLoadAllDataOnLogin = async function(username) {
         
         if (snapshot.exists()) {
             const data = snapshot.val();
-            
-            // Завантажуємо дані (з перевіркою на null)
-            if (data.dailySchedule && Array.isArray(data.dailySchedule)) {
-                window.dailySchedule = data.dailySchedule;
-                console.log('✅ Розпорядок дня завантажено');
-            }
 
             if (data.weeklyMenu && typeof data.weeklyMenu === 'object') {
                 window.weeklyMenu = data.weeklyMenu;
@@ -349,17 +412,18 @@ window.autoLoadAllDataOnLogin = async function(username) {
                 console.log('✅ Список покупок завантажено');
             }
             
-            console.log('✅ Всі дані завантажено з Firebase');
+            console.log('✅ Загальні дані завантажено з Firebase');
         } else {
-            console.log('ℹ️ Немає збережених даних у Firebase');
+            console.log('ℹ️ Немає збережених загальних даних у Firebase');
         }
     } catch (error) {
-        console.error('❌ Помилка автозавантаження даних:', error);
+        console.error('❌ Помилка автозавантаження загальних даних:', error);
         handleFirebaseError(error, 'завантаження даних');
     }
     
-    // Завантажуємо завдання користувача
+    // Завантажуємо персональні дані користувача
     await window.autoLoadTasksOnLogin(username);
+    await window.autoLoadDailyScheduleOnLogin(username);
 };
 
 // ===== MANUAL SAVE/LOAD FUNCTIONS =====
@@ -396,17 +460,13 @@ window.saveAllToFirebase = async function() {
     }
 
     try {
-        // Готуємо дані з валідацією
-        const schedule = window.dailySchedule || [];
-        const tasks = window.tasks || [];
+        // Готуємо загальні дані з валідацією
         const menu = window.weeklyMenu || {};
         const supplies = sanitizeFirebaseObject(window.suppliesStatus || {});
         const shopping = window.shoppingList || {};
 
         // Зберігаємо тільки непорожні дані або null
         const allData = {
-            dailySchedule: schedule.length > 0 ? schedule : null,
-            tasks: tasks.length > 0 ? tasks : null,
             weeklyMenu: Object.keys(menu).length > 0 ? menu : null,
             supplies: Object.keys(supplies).length > 0 ? supplies : null,
             shoppingList: Object.keys(shopping).length > 0 ? shopping : null,
@@ -416,10 +476,15 @@ window.saveAllToFirebase = async function() {
 
         await database.ref('allData').set(allData);
         
-        // Зберігаємо завдання користувача
+        // Зберігаємо персональні дані користувача
         const username = currentUserObj.username;
+        
         if (window.tasksState && window.tasksState[username]) {
             await saveTasksToFirebaseInternal(username, window.tasksState[username]);
+        }
+        
+        if (window.dailyScheduleState && window.dailyScheduleState[username]) {
+            await saveDailyScheduleToFirebaseInternal(username, window.dailyScheduleState[username]);
         }
         
         alert(`✅ Всі дані збережено в хмару!\n\nЗбережено: ${currentUserObj.name}`);
@@ -450,18 +515,6 @@ window.loadAllFromFirebase = async function() {
         
         if (snapshot.exists()) {
             const data = snapshot.val();
-            
-            // Завантажуємо дані з перевіркою
-            if (data.dailySchedule) {
-                window.dailySchedule = data.dailySchedule;
-                if (typeof window.renderDailySchedule === 'function') {
-                    window.renderDailySchedule();
-                }
-            }
-
-            if (data.tasks) {
-                window.tasks = data.tasks;
-            }
 
             if (data.weeklyMenu) {
                 window.weeklyMenu = data.weeklyMenu;
@@ -484,16 +537,26 @@ window.loadAllFromFirebase = async function() {
                 }
             }
             
-            // Завантажуємо завдання користувача
+            // Завантажуємо персональні дані користувача
             const currentUserObj = window.currentUser ? window.currentUser() : null;
             if (currentUserObj) {
                 const username = currentUserObj.username;
+                
                 const userTasksData = await loadTasksFromFirebaseInternal(username);
                 if (userTasksData) {
                     if (!window.tasksState) window.tasksState = {};
                     window.tasksState[username] = userTasksData;
                     if (typeof window.renderTasks === 'function') {
                         window.renderTasks();
+                    }
+                }
+                
+                const userScheduleData = await loadDailyScheduleFromFirebaseInternal(username);
+                if (userScheduleData) {
+                    if (!window.dailyScheduleState) window.dailyScheduleState = {};
+                    window.dailyScheduleState[username] = userScheduleData;
+                    if (typeof window.renderDailySchedule === 'function') {
+                        window.renderDailySchedule();
                     }
                 }
             }
@@ -514,4 +577,4 @@ window.loadAllFromFirebase = async function() {
     }
 };
 
-console.log('✅ Firebase config завантажено (безпечна версія з валідацією)');
+console.log('✅ Firebase config завантажено (з підтримкою персональних розпорядків)');
