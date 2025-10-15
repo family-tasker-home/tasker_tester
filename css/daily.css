@@ -92,6 +92,12 @@
     transform: translateY(0);
 }
 
+#daily-section button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
 .schedule-list {
     display: flex;
     flex-direction: column;
@@ -164,42 +170,25 @@
     color: #888;
 }
 
-.action-buttons {
-    display: flex;
-    gap: 15px;
-    margin-top: 30px;
-    padding-top: 20px;
-    border-top: 2px solid #cc5500;
-    justify-content: center;
-    flex-wrap: wrap;
+.empty-state h2 {
+    color: #ffa500;
+    margin-bottom: 10px;
 }
 
-.action-buttons button {
-    padding: 15px 40px;
-    font-size: 1.1em;
-    display: flex;
-    align-items: center;
-    gap: 10px;
+.empty-state .emoji {
+    font-size: 4em;
+    margin-bottom: 20px;
 }
 
-.save-btn {
-    background: linear-gradient(135deg, #4a3d70 0%, #2d1b4e 100%);
-    border-color: #2d1b4e;
-    color: #d0d0d0;
-}
-
-.save-btn:hover {
-    box-shadow: 0 5px 15px rgba(45, 27, 78, 0.6);
-}
-
-.load-btn {
-    background: linear-gradient(135deg, #004d40 0%, #003d33 100%);
-    border-color: #003d33;
-    color: #d0d0d0;
-}
-
-.load-btn:hover {
-    box-shadow: 0 5px 15px rgba(0, 77, 64, 0.6);
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateX(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
 }
 
 /* ===== RESPONSIVE DESIGN ===== */
@@ -220,14 +209,6 @@
     .schedule-item {
         flex-direction: column;
         align-items: flex-start;
-    }
-
-    .action-buttons {
-        flex-direction: column;
-    }
-
-    .action-buttons button {
-        width: 100%;
     }
 }
 
