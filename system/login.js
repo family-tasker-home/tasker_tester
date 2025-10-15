@@ -126,6 +126,25 @@ function showLoginForm() {
 window.selectAccount = function(username) {
     selectedUsername = username;
     const user = USERS[username];
+    
+    // Якщо це Анонім - входимо без пароля
+    if (username === 'Анонім') {
+        currentUser = {
+            name: user.name,
+            username: username,
+            role: user.role,
+            promptFile: user.promptFile
+        };
+        
+        localStorage.setItem('halloween_user', JSON.stringify(currentUser));
+        showAppContent();
+        setTimeout(() => {
+            showMessage(`Вітаємо, ${user.name}!`, 'success');
+        }, 100);
+        return;
+    }
+    
+    // Для інших користувачів показуємо форму пароля
     const avatar = AVATARS[username] || '👤';
     const roleText = user.role === 'Dev' ? '🔧 Розробник' : '👀 Користувач';
     
