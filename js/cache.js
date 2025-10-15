@@ -4,17 +4,12 @@
 // Функція автоматичного збереження в кеш
 window.autoSaveToCache = function() {
     try {
-        // Зберігаємо розпорядок дня
-        if (typeof window.dailySchedule !== 'undefined') {
-            localStorage.setItem('dailySchedule', JSON.stringify(window.dailySchedule));
+        // Зберігаємо розпорядок дня (новий формат з персоналізацією)
+        if (typeof window.dailyScheduleState !== 'undefined') {
+            localStorage.setItem('dailyScheduleState', JSON.stringify(window.dailyScheduleState));
         }
         
-        // Зберігаємо завдання (стара структура - для сумісності)
-        if (typeof window.tasks !== 'undefined') {
-            localStorage.setItem('tasks', JSON.stringify(window.tasks));
-        }
-        
-        // Зберігаємо стан нових завдань
+        // Зберігаємо стан завдань
         if (typeof window.tasksState !== 'undefined') {
             localStorage.setItem('tasksState', JSON.stringify(window.tasksState));
         }
@@ -46,21 +41,14 @@ window.autoSaveToCache = function() {
 // Функція завантаження з кешу
 window.loadFromCache = function() {
     try {
-        // Завантажуємо розпорядок дня
-        const savedSchedule = localStorage.getItem('dailySchedule');
-        if (savedSchedule) {
-            window.dailySchedule = JSON.parse(savedSchedule);
+        // Завантажуємо розпорядок дня (новий формат)
+        const savedScheduleState = localStorage.getItem('dailyScheduleState');
+        if (savedScheduleState) {
+            window.dailyScheduleState = JSON.parse(savedScheduleState);
             console.log('✅ Розпорядок дня завантажено з кешу');
         }
         
-        // Завантажуємо завдання (стара структура)
-        const savedTasks = localStorage.getItem('tasks');
-        if (savedTasks) {
-            window.tasks = JSON.parse(savedTasks);
-            console.log('✅ Завдання завантажено з кешу');
-        }
-        
-        // Завантажуємо стан нових завдань
+        // Завантажуємо стан завдань
         const savedTasksState = localStorage.getItem('tasksState');
         if (savedTasksState) {
             window.tasksState = JSON.parse(savedTasksState);
@@ -108,8 +96,7 @@ window.clearCache = function() {
     
     try {
         // Очищаємо всі дані
-        localStorage.removeItem('dailySchedule');
-        localStorage.removeItem('tasks');
+        localStorage.removeItem('dailyScheduleState');
         localStorage.removeItem('tasksState');
         localStorage.removeItem('weeklyMenu');
         localStorage.removeItem('suppliesStatus');
@@ -117,8 +104,7 @@ window.clearCache = function() {
         localStorage.removeItem('lastCacheUpdate');
         
         // Ініціалізуємо порожні структури
-        window.dailySchedule = [];
-        window.tasks = [];
+        window.dailyScheduleState = {};
         window.tasksState = {};
         window.weeklyMenu = {
             'Понеділок': {},
@@ -151,8 +137,7 @@ window.clearCache = function() {
 window.exportData = function() {
     try {
         const allData = {
-            dailySchedule: window.dailySchedule || [],
-            tasks: window.tasks || [],
+            dailyScheduleState: window.dailyScheduleState || {},
             tasksState: window.tasksState || {},
             weeklyMenu: window.weeklyMenu || {},
             suppliesStatus: window.suppliesStatus || {},
@@ -201,8 +186,7 @@ window.importData = function() {
                 }
                 
                 // Імпортуємо дані
-                if (data.dailySchedule) window.dailySchedule = data.dailySchedule;
-                if (data.tasks) window.tasks = data.tasks;
+                if (data.dailyScheduleState) window.dailyScheduleState = data.dailyScheduleState;
                 if (data.tasksState) window.tasksState = data.tasksState;
                 if (data.weeklyMenu) window.weeklyMenu = data.weeklyMenu;
                 if (data.suppliesStatus) window.suppliesStatus = data.suppliesStatus;
@@ -238,4 +222,4 @@ setInterval(() => {
     }
 }, 30000);
 
-console.log('✅ Cache management system завантажено (з підтримкою tasksState)');
+console.log('✅ Cache management system завантажено (оновлена версія)');
