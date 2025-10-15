@@ -20,10 +20,12 @@
     border-radius: 20px;
     padding: 40px;
     box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
-    max-width: 450px;
+    max-width: 500px;
     width: 90%;
     text-align: center;
     border: 1px solid rgba(255, 255, 255, 0.2);
+    max-height: 90vh;
+    overflow-y: auto;
 }
 
 .login-header {
@@ -69,13 +71,54 @@
     align-items: center;
     gap: 15px;
     text-align: left;
+    position: relative;
+}
+
+/* Role-based border colors */
+.account-card[data-role="Dev"] {
+    border-color: #9b59b6;
+}
+
+.account-card[data-role="Кухня"] {
+    border-color: #e67e22;
+}
+
+.account-card[data-role="Ванна"] {
+    border-color: #3498db;
+}
+
+.account-card[data-role="Кладовка"] {
+    border-color: #27ae60;
+}
+
+.account-card[data-role="Viewer"] {
+    border-color: #95a5a6;
 }
 
 .account-card:hover {
-    border-color: #3498db;
     background: #f8f9fa;
     transform: translateY(-2px);
     box-shadow: 0 5px 15px rgba(52, 152, 219, 0.2);
+}
+
+.account-card:hover[data-role="Dev"] {
+    border-color: #8e44ad;
+    box-shadow: 0 5px 15px rgba(155, 89, 182, 0.3);
+}
+
+.account-card:hover[data-role="Кухня"] {
+    border-color: #d35400;
+    box-shadow: 0 5px 15px rgba(230, 126, 34, 0.3);
+}
+
+.account-card:hover[data-role="Ванна"] {
+    border-color: #2980b9;
+    box-shadow: 0 5px 15px rgba(52, 152, 219, 0.3);
+}
+
+.account-card:hover[data-role="Кладовка"] {
+    border-color: #229954;
+    box-shadow: 0 5px 15px rgba(39, 174, 96, 0.3);
 }
 
 .account-avatar {
@@ -88,6 +131,27 @@
     justify-content: center;
     font-size: 1.5em;
     flex-shrink: 0;
+}
+
+/* Role-based avatar backgrounds */
+.account-card[data-role="Dev"] .account-avatar {
+    background: linear-gradient(135deg, #9b59b6, #8e44ad);
+}
+
+.account-card[data-role="Кухня"] .account-avatar {
+    background: linear-gradient(135deg, #e67e22, #d35400);
+}
+
+.account-card[data-role="Ванна"] .account-avatar {
+    background: linear-gradient(135deg, #3498db, #2980b9);
+}
+
+.account-card[data-role="Кладовка"] .account-avatar {
+    background: linear-gradient(135deg, #27ae60, #229954);
+}
+
+.account-card[data-role="Viewer"] .account-avatar {
+    background: linear-gradient(135deg, #95a5a6, #7f8c8d);
 }
 
 .account-info {
@@ -105,6 +169,9 @@
     font-size: 0.85em;
     color: #7f8c8d;
     margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 5px;
 }
 
 .account-arrow {
@@ -242,6 +309,7 @@
     border-left: 4px solid #e74c3c;
     margin-bottom: 20px;
     font-size: 0.9em;
+    white-space: pre-line;
 }
 
 .success-message {
@@ -252,6 +320,7 @@
     border-left: 4px solid #2ecc71;
     margin-bottom: 20px;
     font-size: 0.9em;
+    white-space: pre-line;
 }
 
 .loading {
@@ -276,6 +345,41 @@
 @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
+}
+
+/* Role indicator badge */
+.role-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.75em;
+    font-weight: 600;
+    margin-left: 8px;
+}
+
+.role-badge.dev {
+    background: #9b59b6;
+    color: white;
+}
+
+.role-badge.kitchen {
+    background: #e67e22;
+    color: white;
+}
+
+.role-badge.bathroom {
+    background: #3498db;
+    color: white;
+}
+
+.role-badge.storage {
+    background: #27ae60;
+    color: white;
+}
+
+.role-badge.viewer {
+    background: #95a5a6;
+    color: white;
 }
 
 /* Responsive */
@@ -313,6 +417,10 @@
         height: 50px;
         font-size: 1.5em;
     }
+    
+    .account-role {
+        font-size: 0.8em;
+    }
 }
 
 /* Hidden state */
@@ -327,4 +435,60 @@
 
 .app-content.visible {
     display: block;
+}
+
+/* User info header in app */
+.user-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 20px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    margin-bottom: 20px;
+}
+
+.user-header-avatar {
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4em;
+    background: linear-gradient(135deg, #3498db, #2980b9);
+}
+
+.user-header-info {
+    flex: 1;
+}
+
+.user-header-name {
+    font-weight: 600;
+    color: #2c3e50;
+    margin: 0;
+    font-size: 1.1em;
+}
+
+.user-header-role {
+    font-size: 0.85em;
+    color: #7f8c8d;
+    margin: 2px 0 0 0;
+}
+
+.user-header-logout {
+    padding: 8px 16px;
+    background: #e74c3c;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.9em;
+    transition: all 0.3s ease;
+}
+
+.user-header-logout:hover {
+    background: #c0392b;
+    transform: translateY(-1px);
 }
