@@ -38,26 +38,57 @@ function sanitizeFirebaseObject(obj) {
     return sanitized;
 }
 
-// Перевірка чи користувач є Dev
-async function isDevUser() {
-    const user = auth.currentUser;
-    if (!user) return false;
-    
+// Хешування коду (простий варіант для родинного сайту)
+function hashCode(code) {
+    let hash = 0;
+    for (let i = 0; i < code.length; i++) {
+        const char = code.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash = hash & hash;
+    }
+    return hash.toString();
+}
+
+// Перевірка секретного коду через Firebase
+async function verifySecretCode(inputCode) {
     try {
-        const snapshot = await database.ref(`users/${user.uid}/role`).once('value');
-        return snapshot.val() === 'Dev';
+        const snapshot = await database.ref('secretCode').once('value');
+        const storedHash = snapshot.val();
+        
+        if (!storedHash) {
+            console.error('❌ Секретний код не налаштований в базі!');
+            return false;
+        }
+        
+        return hashCode(inputCode) === storedHash;
     } catch (error) {
-        console.error('Помилка перевірки ролі:', error);
+        console.error('Помилка перевірки коду:', error);
         return false;
     }
 }
+
+// Встановлення секретного коду (викликати один раз для налаштування)
+window.setupSecretCode = async function(newCode) {
+    const adminPassword = prompt("Введіть адмін-пароль для налаштування коду:");
+    if (adminPassword !== "admin2024") {
+        alert("❌ Неправильний адмін-пароль!");
+        return;
+    }
+    
+    try {
+        await database.ref('secretCode').set(hashCode(newCode));
+        alert("✅ Секретний код встановлено!");
+    } catch (error) {
+        alert("❌ Помилка: " + error.message);
+    }
+};
 
 // Обробка помилок Firebase
 function handleFirebaseError(error, operation) {
     console.error(`Firebase error (${operation}):`, error);
     
     if (error.code === 'PERMISSION_DENIED') {
-        alert('❌ У вас немає прав для цієї операції!\n\nТільки користувачі з роллю Dev можуть зберігати дані.');
+        alert('❌ У вас немає прав для цієї операції!');
     } else if (error.code === 'NETWORK_ERROR') {
         alert('❌ Помилка мережі. Перевірте з\'єднання з інтернетом.');
     } else {
@@ -68,13 +99,15 @@ function handleFirebaseError(error, operation) {
 // ===== GLOBAL SAVE/LOAD FUNCTIONS =====
 
 window.saveAllToFirebase = async function() {
-    const user = auth.currentUser;
-    if (!user) {
-        alert('❌ Потрібно увійти в систему!');
+    const code = prompt("🔐 Введіть секретний код для збереження:");
+    if (!code) return;
+    
+    const isValid = await verifySecretCode(code);
+    if (!isValid) {
+        alert("❌ Неправильний код!");
         return;
     }
 
-    // Firebase rules автоматично перевірять роль
     const btn = event ? event.target : null;
     const originalText = btn ? btn.textContent : '';
     
@@ -106,12 +139,6 @@ window.saveAllToFirebase = async function() {
 };
 
 window.loadAllFromFirebase = async function() {
-    const user = auth.currentUser;
-    if (!user) {
-        alert('❌ Потрібно увійти в систему!');
-        return;
-    }
-
     const confirmation = confirm("Завантажити всі дані з хмари?\n\nПоточні дані будуть замінені!");
     if (!confirmation) return;
 
@@ -182,9 +209,12 @@ window.loadAllFromFirebase = async function() {
 // ===== INDIVIDUAL SAVE/LOAD FUNCTIONS =====
 
 window.saveDailyToFirebase = async function() {
-    const user = auth.currentUser;
-    if (!user) {
-        alert('❌ Потрібно увійти в систему!');
+    const code = prompt("🔐 Введіть секретний код для збереження:");
+    if (!code) return;
+    
+    const isValid = await verifySecretCode(code);
+    if (!isValid) {
+        alert("❌ Неправильний код!");
         return;
     }
 
@@ -195,6 +225,7 @@ window.saveDailyToFirebase = async function() {
 
     try {
         await database.ref('allData/dailySchedule').set(window.dailySchedule);
+        await database.ref('allData/lastUpdated').set(new Date().toISOString());
         alert("✅ Розпорядок дня збережено в хмару!");
     } catch (error) {
         handleFirebaseError(error, 'збереження');
@@ -202,12 +233,6 @@ window.saveDailyToFirebase = async function() {
 };
 
 window.loadDailyFromFirebase = async function() {
-    const user = auth.currentUser;
-    if (!user) {
-        alert('❌ Потрібно увійти в систему!');
-        return;
-    }
-
     const confirmation = confirm("Завантажити розпорядок дня з хмари?\n\nПоточні дані будуть замінені!");
     if (!confirmation) return;
 
@@ -234,9 +259,12 @@ window.loadDailyFromFirebase = async function() {
 };
 
 window.saveTasksToFirebase = async function() {
-    const user = auth.currentUser;
-    if (!user) {
-        alert('❌ Потрібно увійти в систему!');
+    const code = prompt("🔐 Введіть секретний код для збереження:");
+    if (!code) return;
+    
+    const isValid = await verifySecretCode(code);
+    if (!isValid) {
+        alert("❌ Неправильний код!");
         return;
     }
 
@@ -247,6 +275,7 @@ window.saveTasksToFirebase = async function() {
 
     try {
         await database.ref('allData/tasks').set(window.tasks);
+        await database.ref('allData/lastUpdated').set(new Date().toISOString());
         alert("✅ Завдання збережено в хмару!");
     } catch (error) {
         handleFirebaseError(error, 'збереження');
@@ -254,12 +283,6 @@ window.saveTasksToFirebase = async function() {
 };
 
 window.loadTasksFromFirebase = async function() {
-    const user = auth.currentUser;
-    if (!user) {
-        alert('❌ Потрібно увійти в систему!');
-        return;
-    }
-
     const confirmation = confirm("Завантажити завдання з хмари?\n\nПоточні дані будуть замінені!");
     if (!confirmation) return;
 
@@ -286,9 +309,12 @@ window.loadTasksFromFirebase = async function() {
 };
 
 window.saveMenuToFirebase = async function() {
-    const user = auth.currentUser;
-    if (!user) {
-        alert('❌ Потрібно увійти в систему!');
+    const code = prompt("🔐 Введіть секретний код для збереження:");
+    if (!code) return;
+    
+    const isValid = await verifySecretCode(code);
+    if (!isValid) {
+        alert("❌ Неправильний код!");
         return;
     }
 
@@ -305,6 +331,7 @@ window.saveMenuToFirebase = async function() {
 
     try {
         await database.ref('allData/weeklyMenu').set(window.weeklyMenu);
+        await database.ref('allData/lastUpdated').set(new Date().toISOString());
         alert("✅ Меню збережено в хмару!");
     } catch (error) {
         handleFirebaseError(error, 'збереження');
@@ -312,12 +339,6 @@ window.saveMenuToFirebase = async function() {
 };
 
 window.loadMenuFromFirebase = async function() {
-    const user = auth.currentUser;
-    if (!user) {
-        alert('❌ Потрібно увійти в систему!');
-        return;
-    }
-
     const confirmation = confirm("Завантажити меню з хмари?\n\nПоточні дані будуть замінені!");
     if (!confirmation) return;
 
@@ -344,9 +365,12 @@ window.loadMenuFromFirebase = async function() {
 };
 
 window.saveSuppliestoFirebase = async function() {
-    const user = auth.currentUser;
-    if (!user) {
-        alert('❌ Потрібно увійти в систему!');
+    const code = prompt("🔐 Введіть секретний код для збереження:");
+    if (!code) return;
+    
+    const isValid = await verifySecretCode(code);
+    if (!isValid) {
+        alert("❌ Неправильний код!");
         return;
     }
 
@@ -359,6 +383,7 @@ window.saveSuppliestoFirebase = async function() {
 
     try {
         await database.ref('allData/supplies').set(sanitizedSupplies);
+        await database.ref('allData/lastUpdated').set(new Date().toISOString());
         alert("✅ Запаси збережено в хмару!");
     } catch (error) {
         handleFirebaseError(error, 'збереження');
@@ -366,12 +391,6 @@ window.saveSuppliestoFirebase = async function() {
 };
 
 window.loadSuppliesFromFirebase = async function() {
-    const user = auth.currentUser;
-    if (!user) {
-        alert('❌ Потрібно увійти в систему!');
-        return;
-    }
-
     const confirmation = confirm("Завантажити запаси з хмари?\n\nПоточні дані будуть замінені!");
     if (!confirmation) return;
 
@@ -398,9 +417,12 @@ window.loadSuppliesFromFirebase = async function() {
 };
 
 window.saveShopToFirebase = async function() {
-    const user = auth.currentUser;
-    if (!user) {
-        alert('❌ Потрібно увійти в систему!');
+    const code = prompt("🔐 Введіть секретний код для збереження:");
+    if (!code) return;
+    
+    const isValid = await verifySecretCode(code);
+    if (!isValid) {
+        alert("❌ Неправильний код!");
         return;
     }
 
@@ -411,6 +433,7 @@ window.saveShopToFirebase = async function() {
 
     try {
         await database.ref('allData/shoppingList').set(window.shoppingList);
+        await database.ref('allData/lastUpdated').set(new Date().toISOString());
         alert("✅ Список покупок збережено в хмару!");
     } catch (error) {
         handleFirebaseError(error, 'збереження');
@@ -418,12 +441,6 @@ window.saveShopToFirebase = async function() {
 };
 
 window.loadShopFromFirebase = async function() {
-    const user = auth.currentUser;
-    if (!user) {
-        alert('❌ Потрібно увійти в систему!');
-        return;
-    }
-
     const confirmation = confirm("Завантажити список покупок з хмари?\n\nПоточні дані будуть замінені!");
     if (!confirmation) return;
 
@@ -449,7 +466,4 @@ window.loadShopFromFirebase = async function() {
     }
 };
 
-// Глобальні функції для доступу
-window.isDevUser = isDevUser;
-
-console.log('✅ Firebase config завантажено (secure version)');
+console.log('✅ Firebase config завантажено (secure version with secret code)');
