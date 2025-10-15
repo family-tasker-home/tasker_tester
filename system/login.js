@@ -264,16 +264,22 @@ function showAppContent() {
     // Автоматично завантажуємо всі дані з Firebase
     if (currentUser && currentUser.username) {
         setTimeout(() => {
+            // Завантажуємо персональні дані користувача
             if (typeof window.autoLoadAllDataOnLogin === 'function') {
                 window.autoLoadAllDataOnLogin(currentUser.username).then(() => {
-                    console.log('✅ Дані автоматично завантажено з Firebase');
+                    console.log('✅ Персональні дані автоматично завантажено з Firebase');
                     
-                    // Оновлюємо всі інтерфейси після завантаження
+                    // Оновлюємо персональні інтерфейси
                     if (typeof window.renderDailySchedule === 'function') window.renderDailySchedule();
                     if (typeof window.renderTasks === 'function') window.renderTasks();
                     if (typeof window.renderMenu === 'function') window.renderMenu();
-                    if (typeof window.renderSupplies === 'function') window.renderSupplies();
-                    if (typeof window.renderList === 'function') window.renderList();
+                });
+            }
+            
+            // Завантажуємо спільні дані (запаси та список покупок)
+            if (typeof window.autoLoadSharedDataOnLogin === 'function') {
+                window.autoLoadSharedDataOnLogin().then(() => {
+                    console.log('✅ Спільні дані автоматично завантажено з Firebase');
                 });
             }
         }, 1500); // Даємо час на ініціалізацію всіх модулів
@@ -331,4 +337,4 @@ window.canModifyData = canModifyData;
 window.canSaveToFirebase = canSaveToFirebase;
 window.currentUser = () => currentUser;
 
-console.log('✅ Login system завантажено (auto-load version)');
+console.log('✅ Login system завантажено (auto-load version з спільними даними)');
