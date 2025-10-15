@@ -32,7 +32,7 @@ window.createShopSection = function() {
                 <div class="action-buttons-top">
                     <button class="action-btn action-btn-secondary" onclick="window.clearChecked()" ${!canEdit ? 'disabled title="Редагування недоступне"' : ''}>
                         <span>✓</span>
-                        <span>Очистити куплене</span>
+                        <span>Видалити куплене</span>
                     </button>
                 </div>
 
@@ -186,7 +186,7 @@ window.clearChecked = function() {
     }
     
     if (clearedCount > 0) {
-        alert(`Видалено ${clearedCount} куплених товарів`);
+        alert(`✅ Видалено ${clearedCount} куплених товарів`);
         window.renderList();
         
         // Автозбереження
