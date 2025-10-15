@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎃 Halloween Planner</title>
+    
+    <!-- System CSS -->
+    <link rel="stylesheet" href="system/general.css">
+    <link rel="stylesheet" href="system/login.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎃</text></svg>">
+    <!-- Page CSS -->
+    <link rel="stylesheet" href="css/daily.css">
+    <link rel="stylesheet" href="css/tasks.css">
+    <link rel="stylesheet" href="css/menu.css">
+    <link rel="stylesheet" href="css/supplies.css">
+    <link rel="stylesheet" href="css/shop.css">
+    <link rel="stylesheet" href="css/recipes.css">
+    <link rel="stylesheet" href="css/ai.css">
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+</head>
+<body>
+    <!-- Весь контент створюється динамічно через JavaScript -->
+    <div id="app"></div>
+
+    <!-- System Scripts (завантажуються першими) -->
+    <script src="system/firebase_config.js"></script>
+    <script src="system/login.js"></script>
+    
+    <!-- Page Scripts (завантажуються після системних) -->
+    <script src="js/daily.js"></script>
+    <script src="js/tasks.js"></script>
+    <script src="js/menu.js"></script>
+    <script src="js/supplies.js"></script>
+    <script src="js/shop.js"></script>
+    <script src="js/recipes.js"></script>
+    <script src="js/config.js"></script>
+    <script src="js/ai.js"></script>
+    
+    <!-- General Script (завантажується останнім, після всіх інших) -->
+    <script src="system/general.js"></script>
+    
+    <!-- Initialize Auth System -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            window.initAuthSystem();
+        });
+    </script>
+</body>
+</html>
