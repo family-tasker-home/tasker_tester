@@ -11,10 +11,22 @@ const API_ENDPOINT = IS_PRODUCTION ? '/api/gemini' : null;
 const LOCAL_API_CONFIGS = IS_PRODUCTION ? [] : [
     {
         key: 'YOUR_GEMINI_API_KEY_1',
-        model: 'gemini-2.0-flash-exp'
+        model: 'gemini-2.0-flash'
     },
     {
         key: 'YOUR_GEMINI_API_KEY_2',
+        model: 'gemini-2.0-flash'
+    },
+    {
+        key: 'YOUR_GEMINI_API_KEY_3',
+        model: 'gemini-2.0-flash'
+    },
+    {
+        key: 'YOUR_GEMINI_API_KEY_4',
+        model: 'gemini-2.0-flash'
+    },
+    {
+        key: 'YOUR_GEMINI_API_KEY_5',
         model: 'gemini-2.0-flash'
     }
 ];
@@ -45,6 +57,7 @@ async function loadProfiles() {
                 name: "Анонім",
                 avatar: "👤",
                 promptFile: "base_prompt",
+                apiKeyIndex: 4,
                 schedule: {
                     monday: "Viewer",
                     tuesday: "Viewer",
@@ -106,6 +119,12 @@ function canUserSaveData(username) {
     return getCurrentRole(username) !== "Viewer";
 }
 
+// Функція для отримання API ключа користувача
+function getUserApiKeyIndex(username) {
+    if (!USERS[username]) return 4; // Fallback на Анонім
+    return USERS[username].apiKeyIndex || 0;
+}
+
 // Експорт для використання в ai.js та інших модулях
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = { 
@@ -116,7 +135,8 @@ if (typeof module !== 'undefined' && module.exports) {
         loadProfiles,
         getCurrentRole,
         getTodayRoleInfo,
-        canUserSaveData
+        canUserSaveData,
+        getUserApiKeyIndex
     };
 }
 
@@ -125,3 +145,4 @@ window.loadProfiles = loadProfiles;
 window.getCurrentRole = getCurrentRole;
 window.getTodayRoleInfo = getTodayRoleInfo;
 window.canUserSaveData = canUserSaveData;
+window.getUserApiKeyIndex = getUserApiKeyIndex;
