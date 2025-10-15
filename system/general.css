@@ -68,6 +68,51 @@ body::before {
     }
 }
 
+@keyframes slideInFromRight {
+    from {
+        transform: translateX(400px);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes slideOutToRight {
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateX(400px);
+        opacity: 0;
+    }
+}
+
+/* ===== SAVE STATUS NOTIFICATION ===== */
+.save-status {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 12px 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    z-index: 10000;
+    font-weight: bold;
+    animation: slideInFromRight 0.3s ease;
+}
+
+.save-status.success {
+    background: #4CAF50;
+    color: white;
+}
+
+.save-status.error {
+    background: #f44336;
+    color: white;
+}
+
 /* ===== SIDEBAR ===== */
 .sidebar {
     position: fixed;
@@ -154,6 +199,21 @@ body::before {
 
 .role-viewer {
     background: linear-gradient(135deg, #95a5a6, #7f8c8d);
+    color: white;
+}
+
+.role-кухня {
+    background: linear-gradient(135deg, #f39c12, #e67e22);
+    color: white;
+}
+
+.role-ванна {
+    background: linear-gradient(135deg, #3498db, #2980b9);
+    color: white;
+}
+
+.role-кладовка {
+    background: linear-gradient(135deg, #9b59b6, #8e44ad);
     color: white;
 }
 
@@ -413,6 +473,16 @@ body::before {
         font-size: 1.5em;
         margin-bottom: 15px;
     }
+    
+    /* Save status для мобільних */
+    .save-status {
+        top: 10px;
+        right: 10px;
+        left: 10px;
+        text-align: center;
+        padding: 10px 15px;
+        font-size: 0.9em;
+    }
 }
 
 @media (max-width: 480px) {
@@ -445,6 +515,12 @@ body::before {
     .main-content h2 {
         font-size: 1.3em;
         margin-bottom: 12px;
+    }
+    
+    /* Save status для малих екранів */
+    .save-status {
+        font-size: 0.85em;
+        padding: 8px 12px;
     }
 }
 
