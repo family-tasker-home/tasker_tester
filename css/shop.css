@@ -44,6 +44,77 @@
     padding: 30px;
 }
 
+/* ===== ACTION BUTTONS TOP ===== */
+
+.action-buttons-top {
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 2px solid #cc5500;
+}
+
+.action-btn {
+    padding: 14px 28px;
+    border-radius: 12px;
+    font-size: 1em;
+    font-weight: 600;
+    cursor: pointer;
+    border: 2px solid;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.action-btn:hover:not(:disabled) {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+}
+
+.action-btn:active:not(:disabled) {
+    transform: translateY(-1px);
+}
+
+.action-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.action-btn-primary {
+    background: linear-gradient(135deg, #cc5500 0%, #b8860b 100%);
+    border-color: #b8860b;
+    color: white;
+    flex: 1;
+    min-width: 200px;
+}
+
+.action-btn-primary:hover:not(:disabled) {
+    background: linear-gradient(135deg, #b8860b 0%, #997a0a 100%);
+    box-shadow: 0 8px 20px rgba(204, 85, 0, 0.4);
+}
+
+.action-btn-secondary {
+    background: linear-gradient(135deg, #4a3d70 0%, #2d1b4e 100%);
+    border-color: #2d1b4e;
+    color: #d0d0d0;
+    flex: 1;
+    min-width: 200px;
+}
+
+.action-btn-secondary:hover:not(:disabled) {
+    background: linear-gradient(135deg, #5a4d80 0%, #3d2b5e 100%);
+    box-shadow: 0 8px 20px rgba(45, 27, 78, 0.4);
+    color: white;
+}
+
+/* ===== ADD ITEM SECTION ===== */
+
 .add-item-section {
     margin-bottom: 30px;
     padding: 25px;
@@ -85,6 +156,12 @@
     box-shadow: 0 0 0 3px rgba(204, 85, 0, 0.2);
 }
 
+.add-item-form input:disabled,
+.add-item-form select:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
 .add-item-form button {
     padding: 12px 30px;
     background: linear-gradient(135deg, #cc5500 0%, #660000 100%);
@@ -98,10 +175,17 @@
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
 }
 
-.add-item-form button:hover {
+.add-item-form button:hover:not(:disabled) {
     transform: translateY(-2px);
     box-shadow: 0 6px 15px rgba(204, 85, 0, 0.5);
 }
+
+.add-item-form button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* ===== CATEGORIES GRID ===== */
 
 .categories-grid {
     display: grid;
@@ -189,6 +273,11 @@
     accent-color: #cc5500;
 }
 
+.item input[type="checkbox"]:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
 .item-name {
     flex: 1;
     color: #d0d0d0;
@@ -205,9 +294,14 @@
     transition: all 0.2s ease;
 }
 
-.delete-item-btn:hover {
+.delete-item-btn:hover:not(:disabled) {
     background: #440000;
     transform: scale(1.05);
+}
+
+.delete-item-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
 }
 
 .empty-category {
@@ -217,10 +311,60 @@
     font-style: italic;
 }
 
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: #2d1b4e;
+    grid-column: 1 / -1;
+}
+
+.empty-state svg {
+    width: 120px;
+    height: 120px;
+    margin-bottom: 20px;
+    opacity: 0.3;
+    fill: #cc5500;
+}
+
+.empty-state p {
+    font-size: 1.2em;
+    color: #888;
+}
+
+/* ===== ANIMATIONS ===== */
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateX(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
 /* ===== RESPONSIVE DESIGN ===== */
-@media (max-width: 768px) {
+
+@media (max-width: 1024px) {
     .categories-grid {
         grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    #shop-section .header h1 {
+        font-size: 2em;
+    }
+
+    .action-buttons-top {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .action-btn {
+        width: 100%;
+        min-width: unset;
     }
 
     .add-item-form {
@@ -228,13 +372,43 @@
     }
 
     .add-item-form input,
-    .add-item-form select {
+    .add-item-form select,
+    .add-item-form button {
         width: 100%;
     }
 }
 
 @media (max-width: 480px) {
+    #shop-section .content {
+        padding: 15px;
+    }
+
+    #shop-section .header {
+        padding: 25px 15px;
+    }
+
+    #shop-section .header h1 {
+        font-size: 1.5em;
+    }
+
+    #shop-section .header p {
+        font-size: 0.9em;
+    }
+
     .add-item-section {
         padding: 15px;
+    }
+
+    .category-card {
+        padding: 15px;
+    }
+
+    .category-title {
+        font-size: 1.1em;
+    }
+
+    .action-btn {
+        padding: 12px 20px;
+        font-size: 0.9em;
     }
 }
