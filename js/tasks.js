@@ -1,6 +1,6 @@
 // ===== TASKS BREAKDOWN LOGIC =====
 
-// Структура для зберігання стану завдань
+// Структура для зберігання стану завдань користувача
 if (typeof window.tasksState === 'undefined') {
     window.tasksState = {};
 }
@@ -21,6 +21,30 @@ async function loadTasksStructure() {
         console.error('❌ Помилка завантаження структури завдань:', error);
         return null;
     }
+}
+
+// Отримати категорію завдань для поточного користувача
+function getUserTaskCategory() {
+    const currentUser = window.currentUser ? window.currentUser() : null;
+    if (!currentUser) return null;
+    
+    const roleInfo = window.getTodayRoleInfo ? window.getTodayRoleInfo(currentUser.username) : null;
+    if (!roleInfo) return null;
+    
+    const role = roleInfo.role;
+    
+    // Якщо Admin або Dev - показуємо всі категорії
+    if (role === 'Dev') {
+        return null; // null означає "всі категорії"
+    }
+    
+    // Якщо Viewer - нічого не показуємо
+    if (role === 'Viewer') {
+        return 'Viewer'; // Спеціальне значення
+    }
+    
+    // Інакше повертаємо назву категорії (Кухня, Ванна, Кладовка)
+    return role;
 }
 
 // Створення HTML структури секції
@@ -44,18 +68,24 @@ window.createTasksSection = async function() {
         return;
     }
     
+    const currentUser = window.currentUser ? window.currentUser() : null;
+    const roleInfo = currentUser ? (window.getTodayRoleInfo ? window.getTodayRoleInfo(currentUser.username) : null) : null;
+    const todayRole = roleInfo ? roleInfo.role : 'Viewer';
+    const dayName = roleInfo ? roleInfo.dayName : '';
+    
     section.innerHTML = `
         <div class="container">
             <div class="header">
                 <h1>🎯 Розподіл завдань</h1>
-                <p>Виконуйте завдання та відмічайте прогрес</p>
+                <p>Ваша роль сьогодні (${dayName}): <strong>${todayRole}</strong></p>
+                ${todayRole === 'Viewer' ? '<p style="color: #ffa500;">Сьогодні у вас вихідний! 🎉</p>' : ''}
             </div>
             
             <div class="content">
                 <div id="tasksList" class="tasks-container"></div>
 
                 <div class="action-buttons">
-                    <button class="save-btn" onclick="window.saveTasksToFirebase()">
+                    <button class="save-btn" onclick="window.saveTasksToFirebase()" ${todayRole === 'Viewer' ? 'disabled' : ''}>
                         <span>☁️</span>
                         <span>Зберегти в хмару</span>
                     </button>
@@ -73,41 +103,82 @@ window.createTasksSection = async function() {
 
 // Перемикання стану завдання
 window.toggleTask = function(category, subcategory, taskIndex) {
+    const currentUser = window.currentUser ? window.currentUser() : null;
+    if (!currentUser) return;
+    
+    const username = currentUser.username;
     const key = `${category}|${subcategory}|${taskIndex}`;
     
-    if (!window.tasksState[key]) {
-        window.tasksState[key] = { completed: false };
+    if (!window.tasksState[username]) {
+        window.tasksState[username] = {};
     }
     
-    window.tasksState[key].completed = !window.tasksState[key].completed;
+    if (!window.tasksState[username][key]) {
+        window.tasksState[username][key] = { 
+            completed: false,
+            completedAt: null
+        };
+    }
+    
+    const wasCompleted = window.tasksState[username][key].completed;
+    window.tasksState[username][key].completed = !wasCompleted;
+    window.tasksState[username][key].completedAt = !wasCompleted ? new Date().toISOString() : null;
     
     window.renderTasks();
-    if (typeof window.autoSaveToCache === 'function') window.autoSaveToCache();
+    
+    // Автоматичне збереження в Firebase
+    if (typeof window.autoSaveTasksToFirebase === 'function') {
+        window.autoSaveTasksToFirebase();
+    }
+    
+    if (typeof window.autoSaveToCache === 'function') {
+        window.autoSaveToCache();
+    }
 };
 
 // Перемикання стану всієї підкатегорії
 window.toggleSubcategory = function(category, subcategory) {
+    const currentUser = window.currentUser ? window.currentUser() : null;
+    if (!currentUser) return;
+    
+    const username = currentUser.username;
     const subcategoryData = tasksStructure[category].subcategories[subcategory];
     const tasksCount = subcategoryData.tasks.length;
+    
+    if (!window.tasksState[username]) {
+        window.tasksState[username] = {};
+    }
     
     // Перевіряємо чи всі завдання виконані
     let allCompleted = true;
     for (let i = 0; i < tasksCount; i++) {
         const key = `${category}|${subcategory}|${i}`;
-        if (!window.tasksState[key] || !window.tasksState[key].completed) {
+        if (!window.tasksState[username][key] || !window.tasksState[username][key].completed) {
             allCompleted = false;
             break;
         }
     }
     
     // Якщо всі виконані - знімаємо, якщо ні - ставимо всі
+    const now = new Date().toISOString();
     for (let i = 0; i < tasksCount; i++) {
         const key = `${category}|${subcategory}|${i}`;
-        window.tasksState[key] = { completed: !allCompleted };
+        window.tasksState[username][key] = { 
+            completed: !allCompleted,
+            completedAt: !allCompleted ? now : null
+        };
     }
     
     window.renderTasks();
-    if (typeof window.autoSaveToCache === 'function') window.autoSaveToCache();
+    
+    // Автоматичне збереження в Firebase
+    if (typeof window.autoSaveTasksToFirebase === 'function') {
+        window.autoSaveTasksToFirebase();
+    }
+    
+    if (typeof window.autoSaveToCache === 'function') {
+        window.autoSaveToCache();
+    }
 };
 
 // Розгорнути/згорнути категорію
@@ -118,15 +189,21 @@ window.toggleCategory = function(category) {
     }
 };
 
-// Отримати прогрес підкатегорії
+// Отримати прогрес підкатегорії для поточного користувача
 function getSubcategoryProgress(category, subcategory) {
+    const currentUser = window.currentUser ? window.currentUser() : null;
+    if (!currentUser) return { completed: 0, total: 0, percentage: 0 };
+    
+    const username = currentUser.username;
     const subcategoryData = tasksStructure[category].subcategories[subcategory];
     const total = subcategoryData.tasks.length;
     let completed = 0;
     
     for (let i = 0; i < total; i++) {
         const key = `${category}|${subcategory}|${i}`;
-        if (window.tasksState[key] && window.tasksState[key].completed) {
+        if (window.tasksState[username] && 
+            window.tasksState[username][key] && 
+            window.tasksState[username][key].completed) {
             completed++;
         }
     }
@@ -134,7 +211,7 @@ function getSubcategoryProgress(category, subcategory) {
     return { completed, total, percentage: Math.round((completed / total) * 100) };
 }
 
-// Отримати прогрес категорії
+// Отримати прогрес категорії для поточного користувача
 function getCategoryProgress(category) {
     const categoryData = tasksStructure[category];
     let totalTasks = 0;
@@ -158,9 +235,52 @@ window.renderTasks = function() {
     const container = document.getElementById('tasksList');
     if (!container || !tasksStructure) return;
     
-    let html = '';
+    const currentUser = window.currentUser ? window.currentUser() : null;
+    if (!currentUser) {
+        container.innerHTML = '<div class="empty-state"><p>Користувач не визначений</p></div>';
+        return;
+    }
     
-    for (const category in tasksStructure) {
+    const username = currentUser.username;
+    const userCategory = getUserTaskCategory();
+    
+    // Якщо Viewer - показуємо повідомлення про вихідний
+    if (userCategory === 'Viewer') {
+        container.innerHTML = `
+            <div class="empty-state">
+                <div style="font-size: 4em; margin-bottom: 20px;">🎉</div>
+                <h2 style="color: #ffa500; margin-bottom: 10px;">Сьогодні у вас вихідний!</h2>
+                <p style="font-size: 1.2em; color: #d0d0d0;">Відпочивайте та насолоджуйтесь днем! 😊</p>
+            </div>
+        `;
+        return;
+    }
+    
+    let html = '';
+    let categoriesToShow = [];
+    
+    // Визначаємо які категорії показувати
+    if (userCategory === null) {
+        // Dev бачить всі категорії
+        categoriesToShow = Object.keys(tasksStructure);
+    } else {
+        // Інші бачать тільки свою категорію
+        categoriesToShow = [userCategory];
+    }
+    
+    // Перевіряємо чи категорія існує
+    const validCategories = categoriesToShow.filter(cat => tasksStructure[cat]);
+    
+    if (validCategories.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <p>Немає завдань для вашої ролі</p>
+            </div>
+        `;
+        return;
+    }
+    
+    for (const category of validCategories) {
         const categoryData = tasksStructure[category];
         const categoryProgress = getCategoryProgress(category);
         
@@ -202,7 +322,15 @@ window.renderTasks = function() {
                                 <div class="tasks-list">
                                     ${subcategoryData.tasks.map((task, index) => {
                                         const key = `${category}|${subcategory}|${index}`;
-                                        const completed = window.tasksState[key] && window.tasksState[key].completed;
+                                        const taskState = window.tasksState[username] && window.tasksState[username][key];
+                                        const completed = taskState && taskState.completed;
+                                        const completedAt = taskState && taskState.completedAt;
+                                        
+                                        let timeInfo = '';
+                                        if (completed && completedAt) {
+                                            const date = new Date(completedAt);
+                                            timeInfo = `<span class="task-time">✓ ${date.toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' })}</span>`;
+                                        }
                                         
                                         return `
                                             <div class="task-item ${completed ? 'completed' : ''}" 
@@ -210,7 +338,10 @@ window.renderTasks = function() {
                                                 <div class="task-checkbox">
                                                     <span class="checkmark">${completed ? '✓' : ''}</span>
                                                 </div>
-                                                <span class="task-text">${task}</span>
+                                                <div class="task-info">
+                                                    <span class="task-text">${task}</span>
+                                                    ${timeInfo}
+                                                </div>
                                             </div>
                                         `;
                                     }).join('')}
@@ -238,4 +369,4 @@ window.loadTasksStateFromSave = function(state) {
     }
 };
 
-console.log('✅ Tasks system завантажено');
+console.log('✅ Tasks system завантажено (персоналізована версія)');
