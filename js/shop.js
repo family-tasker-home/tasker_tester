@@ -5,37 +5,59 @@ if (typeof window.shoppingList === 'undefined') {
     window.shoppingList = {};
 }
 
+// Перевірка прав на редагування списку покупок
+function canEditShopping() {
+    const currentUser = window.currentUser ? window.currentUser() : null;
+    if (!currentUser) return false;
+    
+    const role = window.getCurrentRole ? window.getCurrentRole(currentUser.username) : null;
+    const editRoles = ['Dev', 'Кухня', 'Кладовка', 'Ванна'];
+    return editRoles.includes(role);
+}
+
 // Створення HTML структури секції
 window.createShopSection = function() {
     const section = document.getElementById('shop-section');
+    const canEdit = canEditShopping();
+    
     section.innerHTML = `
         <div class="container">
             <div class="header">
                 <h1>🛒 Список покупок</h1>
                 <p>Організуйте свої покупки за категоріями</p>
+                ${!canEdit ? '<p style="color: #ff6b6b; font-size: 0.9em; margin-top: 10px;">🔒 Перегляд доступен, редагування обмежено</p>' : ''}
             </div>
             
             <div class="content">
-                <div class="add-item-section">
-                    <h2>➕ Додати товар</h2>
-                    <div class="add-item-form">
-                        <input type="text" id="itemNameInput" placeholder="Назва товару...">
-                        <select id="categorySelect">
-                            <option value="🥗 Овочі та фрукти">🥗 Овочі та фрукти</option>
-                            <option value="🥖 Хліб та випічка">🥖 Хліб та випічка</option>
-                            <option value="🥛 Молочні продукти">🥛 Молочні продукти</option>
-                            <option value="🍖 Мясо та риба">🍖 Мясо та риба</option>
-                            <option value="🍝 Бакалія">🍝 Бакалія</option>
-                            <option value="🧊 Заморожені продукти">🧊 Заморожені продукти</option>
-                            <option value="🧴 Побутова хімія">🧴 Побутова хімія</option>
-                            <option value="💊 Гігієна та здоровя">💊 Гігієна та здоровя</option>
-                            <option value="🍪 Солодощі та снеки">🍪 Солодощі та снеки</option>
-                            <option value="🥤 Напої">🥤 Напої</option>
-                            <option value="📦 Інше">📦 Інше</option>
-                        </select>
-                        <button onclick="window.addItem()">Додати</button>
-                    </div>
+                <div class="action-buttons-top">
+                    <button class="action-btn action-btn-secondary" onclick="window.clearChecked()" ${!canEdit ? 'disabled title="Редагування недоступне"' : ''}>
+                        <span>✓</span>
+                        <span>Очистити куплене</span>
+                    </button>
                 </div>
+
+                ${canEdit ? `
+                    <div class="add-item-section">
+                        <h2>➕ Додати товар</h2>
+                        <div class="add-item-form">
+                            <input type="text" id="itemNameInput" placeholder="Назва товару...">
+                            <select id="categorySelect">
+                                <option value="🥗 Овочі та фрукти">🥗 Овочі та фрукти</option>
+                                <option value="🥖 Хліб та випічка">🥖 Хліб та випічка</option>
+                                <option value="🥛 Молочні продукти">🥛 Молочні продукти</option>
+                                <option value="🍖 Мясо та риба">🍖 Мясо та риба</option>
+                                <option value="🍝 Бакалія">🍝 Бакалія</option>
+                                <option value="🧊 Заморожені продукти">🧊 Заморожені продукти</option>
+                                <option value="🧴 Побутова хімія">🧴 Побутова хімія</option>
+                                <option value="💊 Гігієна та здоровя">💊 Гігієна та здоровя</option>
+                                <option value="🍪 Солодощі та снеки">🍪 Солодощі та снеки</option>
+                                <option value="🥤 Напої">🥤 Напої</option>
+                                <option value="📦 Інше">📦 Інше</option>
+                            </select>
+                            <button onclick="window.addItem()">Додати</button>
+                        </div>
+                    </div>
+                ` : ''}
 
                 <div id="categoriesList" class="categories-grid">
                     <div class="empty-state">
@@ -44,21 +66,6 @@ window.createShopSection = function() {
                         </svg>
                         <p>Додайте свій перший товар до списку</p>
                     </div>
-                </div>
-
-                <div class="action-buttons">
-                    <button class="save-btn" onclick="window.saveShopToFirebase()">
-                        <span>☁️</span>
-                        <span>Зберегти в хмару</span>
-                    </button>
-                    <button class="load-btn" onclick="window.loadShopFromFirebase()">
-                        <span>☁️</span>
-                        <span>Завантажити з хмари</span>
-                    </button>
-                    <button class="clear-btn" onclick="window.clearChecked()">
-                        <span>✓</span>
-                        <span>Очистити куплене</span>
-                    </button>
                 </div>
             </div>
         </div>
@@ -77,8 +84,15 @@ window.createShopSection = function() {
 
 // Додати новий товар
 window.addItem = function() {
+    if (!canEditShopping()) {
+        alert('❌ У вас немає прав редагування списку покупок!');
+        return;
+    }
+    
     const nameInput = document.getElementById('itemNameInput');
     const categorySelect = document.getElementById('categorySelect');
+    
+    if (!nameInput || !categorySelect) return;
     
     const itemName = nameInput.value.trim();
     const category = categorySelect.value;
@@ -100,31 +114,66 @@ window.addItem = function() {
 
     nameInput.value = '';
     window.renderList();
-    if (typeof window.autoSaveToCache === 'function') window.autoSaveToCache();
+    
+    // Автозбереження
+    if (typeof window.autoSaveShoppingList === 'function') {
+        window.autoSaveShoppingList();
+    }
+    if (typeof window.autoSaveToCache === 'function') {
+        window.autoSaveToCache();
+    }
 };
 
 // Перемкнути стан товару (куплено/не куплено)
 window.toggleItem = function(category, itemId) {
+    if (!canEditShopping()) {
+        return;
+    }
+    
     const item = window.shoppingList[category].find(i => i.id === itemId);
     if (item) {
         item.checked = !item.checked;
         window.renderList();
-        if (typeof window.autoSaveToCache === 'function') window.autoSaveToCache();
+        
+        // Автозбереження
+        if (typeof window.autoSaveShoppingList === 'function') {
+            window.autoSaveShoppingList();
+        }
+        if (typeof window.autoSaveToCache === 'function') {
+            window.autoSaveToCache();
+        }
     }
 };
 
 // Видалити конкретний товар
 window.deleteItem = function(category, itemId) {
+    if (!canEditShopping()) {
+        alert('❌ У вас немає прав редагування списку покупок!');
+        return;
+    }
+    
     window.shoppingList[category] = window.shoppingList[category].filter(i => i.id !== itemId);
     if (window.shoppingList[category].length === 0) {
         delete window.shoppingList[category];
     }
     window.renderList();
-    if (typeof window.autoSaveToCache === 'function') window.autoSaveToCache();
+    
+    // Автозбереження
+    if (typeof window.autoSaveShoppingList === 'function') {
+        window.autoSaveShoppingList();
+    }
+    if (typeof window.autoSaveToCache === 'function') {
+        window.autoSaveToCache();
+    }
 };
 
 // Очистити всі куплені товари
 window.clearChecked = function() {
+    if (!canEditShopping()) {
+        alert('❌ У вас немає прав редагування списку покупок!');
+        return;
+    }
+    
     let clearedCount = 0;
     for (const category in window.shoppingList) {
         const before = window.shoppingList[category].length;
@@ -139,7 +188,14 @@ window.clearChecked = function() {
     if (clearedCount > 0) {
         alert(`Видалено ${clearedCount} куплених товарів`);
         window.renderList();
-        if (typeof window.autoSaveToCache === 'function') window.autoSaveToCache();
+        
+        // Автозбереження
+        if (typeof window.autoSaveShoppingList === 'function') {
+            window.autoSaveShoppingList();
+        }
+        if (typeof window.autoSaveToCache === 'function') {
+            window.autoSaveToCache();
+        }
     } else {
         alert('Немає відмічених товарів для видалення');
     }
@@ -148,6 +204,7 @@ window.clearChecked = function() {
 // Рендер списку покупок
 window.renderList = function() {
     const container = document.getElementById('categoriesList');
+    const canEdit = canEditShopping();
 
     if (!container) return;
 
@@ -176,9 +233,10 @@ window.renderList = function() {
                     type="checkbox" 
                     ${item.checked ? 'checked' : ''}
                     onchange="window.toggleItem('${category}', ${item.id})"
+                    ${!canEdit ? 'disabled' : ''}
                 >
                 <span class="item-name">${item.name}</span>
-                <button class="delete-item-btn" onclick="window.deleteItem('${category}', ${item.id})">✕</button>
+                <button class="delete-item-btn" onclick="window.deleteItem('${category}', ${item.id})" ${!canEdit ? 'disabled' : ''}>✕</button>
             </div>
         `).join('') : '<div class="empty-category">Немає товарів</div>';
 
@@ -196,3 +254,5 @@ window.renderList = function() {
         `;
     }).join('');
 };
+
+console.log('✅ Shopping list system завантажено (з правами доступу та авто-збереженням)');
