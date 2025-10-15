@@ -78,22 +78,11 @@ window.createTasksSection = async function() {
             <div class="header">
                 <h1>🎯 Розподіл завдань</h1>
                 <p>Ваша роль сьогодні (${dayName}): <strong>${todayRole}</strong></p>
-                ${todayRole === 'Viewer' ? '<p style="color: #ffa500;">Сьогодні у вас вихідний! 🎉</p>' : ''}
+                ${todayRole === 'Viewer' ? '<p style="color: #ffa500;">Сьогодні у вас вихідний! 🎉</p>' : '<p style="color: #4CAF50; font-size: 0.9em; margin-top: 5px;">💾 Всі зміни автоматично зберігаються</p>'}
             </div>
             
             <div class="content">
                 <div id="tasksList" class="tasks-container"></div>
-
-                <div class="action-buttons">
-                    <button class="save-btn" onclick="window.saveTasksToFirebase()" ${todayRole === 'Viewer' ? 'disabled' : ''}>
-                        <span>☁️</span>
-                        <span>Зберегти в хмару</span>
-                    </button>
-                    <button class="load-btn" onclick="window.loadTasksFromFirebase()">
-                        <span>☁️</span>
-                        <span>Завантажити з хмари</span>
-                    </button>
-                </div>
             </div>
         </div>
     `;
