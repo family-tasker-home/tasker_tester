@@ -2,6 +2,16 @@
 
 // Поточний користувач
 let currentUser = null;
+let selectedUsername = null;
+
+// Емодзі для аватарів
+const AVATARS = {
+    'Admin': '👑',
+    'Настя': '👩',
+    'Лев': '🦁',
+    'Ярик': '⚡',
+    'Анонім': '👤'
+};
 
 // Ініціалізація системи автентифікації
 window.initAuthSystem = function() {
@@ -27,51 +37,83 @@ window.initAuthSystem = function() {
 // Показати форму входу
 function showLoginForm() {
     const app = document.getElementById('app');
+    
+    // Перевіряємо чи конфігурація завантажена
+    if (typeof USERS === 'undefined') {
+        app.innerHTML = `
+            <div class="login-overlay" id="loginOverlay">
+                <div class="login-container">
+                    <div class="login-header">
+                        <h1>🎃</h1>
+                        <h2>Кухонний Планувальник</h2>
+                        <p>Завантаження...</p>
+                    </div>
+                    <div class="error-message">
+                        Помилка: конфігурація не завантажена. Перезавантажте сторінку.
+                    </div>
+                </div>
+            </div>
+        `;
+        return;
+    }
+    
+    // Генеруємо список акаунтів
+    let accountsHTML = '';
+    for (const [username, user] of Object.entries(USERS)) {
+        const avatar = AVATARS[username] || '👤';
+        const roleText = user.role === 'Dev' ? '🔧 Розробник' : '👀 Користувач';
+        
+        accountsHTML += `
+            <div class="account-card" onclick="window.selectAccount('${username}')">
+                <div class="account-avatar">${avatar}</div>
+                <div class="account-info">
+                    <p class="account-name">${user.name}</p>
+                    <p class="account-role">${roleText}</p>
+                </div>
+                <div class="account-arrow">→</div>
+            </div>
+        `;
+    }
+    
     app.innerHTML = `
         <div class="login-overlay" id="loginOverlay">
             <div class="login-container">
                 <div class="login-header">
                     <h1>🎃</h1>
                     <h2>Кухонний Планувальник</h2>
-                    <p>Вхід в систему</p>
+                    <p>Виберіть акаунт</p>
                 </div>
                 
-                <div id="loginForm">
-                    <form class="login-form" onsubmit="window.loginWithCredentials(event)">
-                        <div class="form-group">
-                            <label for="username">Ім'я користувача:</label>
-                            <input type="text" id="username" name="username" required 
-                                   placeholder="Введіть ім'я користувача"
-                                   list="usernames">
-                            <datalist id="usernames">
-                                <option value="Admin">
-                                <option value="Настя">
-                                <option value="Лев">
-                                <option value="Ярик">
-                                <option value="Анонім">
-                            </datalist>
-                        </div>
-                        
+                <div id="accountSelection" class="account-selection">
+                    <div class="account-list">
+                        ${accountsHTML}
+                    </div>
+                </div>
+                
+                <div id="passwordForm" class="password-form">
+                    <div class="selected-account" id="selectedAccountInfo"></div>
+                    
+                    <form class="login-form" onsubmit="window.loginWithPassword(event)">
                         <div class="form-group">
                             <label for="password">Пароль:</label>
                             <input type="password" id="password" name="password" 
-                                   placeholder="Введіть пароль">
-                            <small style="color: #7f8c8d; font-size: 0.8em;">
-                                Для Анонім пароль не потрібен
+                                   placeholder="Введіть пароль" required autofocus>
+                            <small style="color: #7f8c8d; font-size: 0.8em; margin-top: 5px; display: block;">
+                                Для акаунта "Анонім" пароль не потрібен
                             </small>
                         </div>
                         
-                        <button type="submit" class="btn btn-primary">
-                            <span>🔑</span>
-                            <span>Увійти</span>
-                        </button>
+                        <div class="login-buttons">
+                            <button type="button" class="btn btn-secondary" onclick="window.backToAccounts()">
+                                <span>←</span>
+                                <span>Назад</span>
+                            </button>
+                            <button type="submit" class="btn btn-primary">
+                                <span>🔑</span>
+                                <span>Увійти</span>
+                            </button>
+                        </div>
                     </form>
-                    
-                    <div style="margin-top: 20px; font-size: 0.9em; color: #7f8c8d;">
-                        <p><strong>Система ролей:</strong></p>
-                        <p>🔧 <strong>Dev:</strong> Невідомо</p>
-                        <p>👀 <strong>Користувачі:</strong> Настя, Лев, Ярик, Анонім</p>
-                    </div>
                 </div>
                 
                 <div id="errorMessage" class="error-message" style="display: none;"></div>
@@ -79,6 +121,75 @@ function showLoginForm() {
         </div>
     `;
 }
+
+// Вибір акаунта
+window.selectAccount = function(username) {
+    selectedUsername = username;
+    const user = USERS[username];
+    const avatar = AVATARS[username] || '👤';
+    const roleText = user.role === 'Dev' ? '🔧 Розробник' : '👀 Користувач';
+    
+    // Оновлюємо інформацію про вибраний акаунт
+    document.getElementById('selectedAccountInfo').innerHTML = `
+        <div class="account-avatar">${avatar}</div>
+        <div class="selected-account-info">
+            <p class="selected-account-name">${user.name}</p>
+            <p class="selected-account-role">${roleText}</p>
+        </div>
+    `;
+    
+    // Показуємо форму пароля
+    document.getElementById('accountSelection').style.display = 'none';
+    document.getElementById('passwordForm').classList.add('active');
+    document.getElementById('errorMessage').style.display = 'none';
+    
+    // Фокус на поле пароля
+    setTimeout(() => {
+        document.getElementById('password').focus();
+    }, 100);
+};
+
+// Повернутися до вибору акаунтів
+window.backToAccounts = function() {
+    selectedUsername = null;
+    document.getElementById('accountSelection').style.display = 'block';
+    document.getElementById('passwordForm').classList.remove('active');
+    document.getElementById('password').value = '';
+    document.getElementById('errorMessage').style.display = 'none';
+};
+
+// Вхід з паролем
+window.loginWithPassword = function(event) {
+    event.preventDefault();
+    
+    if (!selectedUsername) {
+        showMessage('Будь ласка, виберіть акаунт', 'error');
+        return;
+    }
+    
+    const password = document.getElementById('password').value;
+    const user = USERS[selectedUsername];
+    
+    // Перевіряємо пароль
+    if (user && user.password === password) {
+        currentUser = {
+            name: user.name,
+            username: selectedUsername,
+            role: user.role,
+            promptFile: user.promptFile
+        };
+        
+        localStorage.setItem('halloween_user', JSON.stringify(currentUser));
+        showAppContent();
+        setTimeout(() => {
+            showMessage(`Вітаємо, ${user.name}!`, 'success');
+        }, 100);
+    } else {
+        showMessage('Неправильний пароль', 'error');
+        document.getElementById('password').value = '';
+        document.getElementById('password').focus();
+    }
+};
 
 // Показати контент додатку
 function showAppContent() {
@@ -99,7 +210,7 @@ function showAppContent() {
                 <div class="sidebar-header">
                     <h2>🎃 Кухонний Планувальник</h2>
                     <div class="user-badge">
-                        <span>${currentUser.name}</span>
+                        <span>${AVATARS[currentUser.username] || '👤'} ${currentUser.name}</span>
                         <span class="role-badge role-${currentUser.role.toLowerCase()}">${currentUser.role}</span>
                     </div>
                     <button class="close-btn" onclick="window.toggleSidebar()">✕</button>
@@ -252,49 +363,14 @@ function initializeApp() {
         sidebar.classList.add('hidden');
     }
     
-    console.log('✅ Halloween Planner готовий до роботи!');
+    console.log('✅ Кухонний Планувальник готовий до роботи!');
 }
-
-// Вхід через username/password
-window.loginWithCredentials = function(event) {
-    event.preventDefault();
-    
-    const username = document.getElementById('username').value.trim();
-    const password = document.getElementById('password').value;
-    
-    if (!username) {
-        showMessage('Будь ласка, введіть ім\'я користувача', 'error');
-        return;
-    }
-    
-    // Перевіряємо чи конфігурація завантажена
-    if (typeof USERS === 'undefined') {
-        showMessage('Помилка: конфігурація не завантажена', 'error');
-        return;
-    }
-    
-    // Перевіряємо користувача
-    const user = USERS[username];
-    if (user && user.password === password) {
-        currentUser = {
-            name: user.name,
-            username: username,
-            role: user.role,
-            promptFile: user.promptFile
-        };
-        
-        localStorage.setItem('halloween_user', JSON.stringify(currentUser));
-        showAppContent();
-        showMessage(`Вітаємо, ${user.name}!`, 'success');
-    } else {
-        showMessage('Неправильне ім\'я користувача або пароль', 'error');
-    }
-};
 
 // Вихід з системи
 window.logout = function() {
     if (confirm('Ви впевнені, що хочете вийти?')) {
         currentUser = null;
+        selectedUsername = null;
         localStorage.removeItem('halloween_user');
         
         // Очищаємо історію чату при виході
@@ -302,7 +378,9 @@ window.logout = function() {
         localStorage.removeItem('jarvis_context');
         
         showLoginForm();
-        showMessage('Ви успішно вийшли з системи', 'success');
+        setTimeout(() => {
+            showMessage('Ви успішно вийшли з системи', 'success');
+        }, 100);
     }
 };
 
@@ -358,7 +436,7 @@ function createAssistantSection() {
                 <div class="chat-header">
                     <h2><span class="jarvis-icon">🤖</span> Джарвіс - Кухонний Асистент</h2>
                     <div class="chat-user-info">
-                        <span>Профіль: ${currentUser.name}</span>
+                        <span>Профіль: ${AVATARS[currentUser.username] || '👤'} ${currentUser.name}</span>
                     </div>
                 </div>
                 <div class="chat-messages" id="chatMessages"></div>
