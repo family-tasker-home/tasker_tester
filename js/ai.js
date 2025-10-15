@@ -192,7 +192,78 @@ async function sendMessageToAI(message) {
         aiResponse = cleanMarkdown(aiResponse);
 
         // ОБРОБКА КОМАНД і АВТОЗБЕРЕЖЕННЯ
-const commandsExecuted = executeCommands(aiResponse);
+        const commandsExecuted = executeCommands(aiResponse);
+        
+        // Видаляємо команди з тексту відповіді
+        commandsExecuted.forEach(cmd => {
+            aiResponse = aiResponse.replace(cmd.original, '');
+        });
+        aiResponse = aiResponse.trim();
+        
+        // Перевірка команд перегляду даних
+        const viewCommands = commandsExecuted.filter(cmd => cmd.type.startsWith('ПЕРЕГЛЯНУТИ_'));
+        
+        if (viewCommands.length > 0) {
+            chatHistory.push({ role: 'user', content: message });
+            if (aiResponse) {
+                chatHistory.push({ role: 'assistant', content: aiResponse });
+            }
+            
+            let freshDataMessage = '📊 Оновлені дані:\n\n';
+            for (const cmd of viewCommands) {
+                freshDataMessage += cmd.data + '\n\n';
+            }
+            
+            chatHistory.push({ role: 'user', content: freshDataMessage });
+            
+            chatContainer.removeChild(loadingMessage);
+            if (aiResponse) {
+                chatContainer.appendChild(createMessageElement(aiResponse, 'assistant'));
+            }
+            chatContainer.appendChild(createMessageElement(freshDataMessage, 'user'));
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+            
+            const newLoadingMessage = createMessageElement('Джарвіс аналізує оновлені дані...', 'assistant', true);
+            chatContainer.appendChild(newLoadingMessage);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+            
+            const followUpContents = buildConversationHistory('Проаналізуй ці дані та дай відповідь на моє питання');
+            
+            const followUpResponse = await fetch(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: followUpContents,
+                    apiKeyIndex: currentApiKeyIndex,
+                    generationConfig: {
+                        temperature: 0.9,
+                        topK: 40,
+                        topP: 0.95,
+                        maxOutputTokens: 2048,
+                    }
+                })
+            });
+            
+            if (!followUpResponse.ok) throw new Error(`HTTP error! status: ${followUpResponse.status}`);
+            
+            const followUpData = await followUpResponse.json();
+            if (!followUpData.candidates?.[0]?.content) throw new Error('Некоректна відповідь від Gemini API');
+            
+            let finalResponse = followUpData.candidates[0].content.parts[0].text;
+            finalResponse = cleanMarkdown(finalResponse);
+            
+            chatContainer.removeChild(newLoadingMessage);
+            chatContainer.appendChild(createMessageElement(finalResponse, 'assistant'));
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+            
+            chatHistory.push({ role: 'assistant', content: finalResponse });
+            if (chatHistory.length > 20) chatHistory = chatHistory.slice(-20);
+            
+            saveHistoryToCache();
+            return;
+        }
+        
+        // Виконання команд модифікації та автозбереження
         if (commandsExecuted.length > 0) {
             console.log('✅ Виконано команд:', commandsExecuted.length);
             
@@ -711,72 +782,3 @@ window.initChat = initChat;
 window.updateJarvisContext = updateContext;
 
 console.log('✅ Джарвіс з виділеними API ключами завантажено');
-            commandsExecuted.forEach(cmd => {
-                aiResponse = aiResponse.replace(cmd.original, '');
-            });
-            aiResponse = aiResponse.trim();
-            
-            // Перевірка команд перегляду даних
-            const viewCommands = commandsExecuted.filter(cmd => cmd.type.startsWith('ПЕРЕГЛЯНУТИ_'));
-            
-            if (viewCommands.length > 0) {
-                chatHistory.push({ role: 'user', content: message });
-                if (aiResponse) {
-                    chatHistory.push({ role: 'assistant', content: aiResponse });
-                }
-                
-                let freshDataMessage = '📊 Оновлені дані:\n\n';
-                for (const cmd of viewCommands) {
-                    freshDataMessage += cmd.data + '\n\n';
-                }
-                
-                chatHistory.push({ role: 'user', content: freshDataMessage });
-                
-                chatContainer.removeChild(loadingMessage);
-                if (aiResponse) {
-                    chatContainer.appendChild(createMessageElement(aiResponse, 'assistant'));
-                }
-                chatContainer.appendChild(createMessageElement(freshDataMessage, 'user'));
-                chatContainer.scrollTop = chatContainer.scrollHeight;
-                
-                const newLoadingMessage = createMessageElement('Джарвіс аналізує оновлені дані...', 'assistant', true);
-                chatContainer.appendChild(newLoadingMessage);
-                chatContainer.scrollTop = chatContainer.scrollHeight;
-                
-                const followUpContents = buildConversationHistory('Проаналізуй ці дані та дай відповідь на моє питання');
-                
-                const followUpResponse = await fetch(endpoint, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        contents: followUpContents,
-                        apiKeyIndex: currentApiKeyIndex, // Той самий виділений ключ
-                        generationConfig: {
-                            temperature: 0.9,
-                            topK: 40,
-                            topP: 0.95,
-                            maxOutputTokens: 2048,
-                        }
-                    })
-                });
-                
-                if (!followUpResponse.ok) throw new Error(`HTTP error! status: ${followUpResponse.status}`);
-                
-                const followUpData = await followUpResponse.json();
-                if (!followUpData.candidates?.[0]?.content) throw new Error('Некоректна відповідь від Gemini API');
-                
-                let finalResponse = followUpData.candidates[0].content.parts[0].text;
-                finalResponse = cleanMarkdown(finalResponse);
-                
-                chatContainer.removeChild(newLoadingMessage);
-                chatContainer.appendChild(createMessageElement(finalResponse, 'assistant'));
-                chatContainer.scrollTop = chatContainer.scrollHeight;
-                
-                chatHistory.push({ role: 'assistant', content: finalResponse });
-                if (chatHistory.length > 20) chatHistory = chatHistory.slice(-20);
-                
-                saveHistoryToCache();
-                return;
-            }
-            
-            //
