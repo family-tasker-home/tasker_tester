@@ -296,10 +296,22 @@
     font-weight: bold;
 }
 
+.task-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1;
+}
+
 .task-text {
     color: #d0d0d0;
     font-size: 1em;
-    flex: 1;
+}
+
+.task-time {
+    font-size: 0.85em;
+    color: #b8860b;
+    font-weight: bold;
 }
 
 /* ===== ANIMATIONS ===== */
