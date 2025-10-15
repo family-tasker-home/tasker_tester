@@ -40,7 +40,6 @@ function sanitizeFirebaseObject(obj) {
 
 // Перевірка секретного коду користувача
 async function verifySecretCode(inputCode, username = null) {
-    // Якщо не вказано користувача, беремо поточного
     if (!username && window.currentUser) {
         username = window.currentUser().username;
     }
@@ -53,20 +52,13 @@ async function verifySecretCode(inputCode, username = null) {
     const user = USERS[username];
     const role = window.getCurrentRole ? window.getCurrentRole(username) : user.role;
     
-    // Перевіряємо чи користувач має права зберігати
     if (role === "Viewer") {
         console.error('❌ У вас немає прав для збереження даних сьогодні!');
         return false;
     }
     
-    // Перевіряємо код
     return inputCode === user.secretCode;
 }
-
-// Встановлення секретного коду (тепер не потрібно - коди в profiles.json)
-window.setupSecretCode = async function(newCode) {
-    alert("⚠️ Секретні коди налаштовуються в файлі system/profiles.json");
-};
 
 // Обробка помилок Firebase
 function handleFirebaseError(error, operation) {
@@ -90,7 +82,6 @@ window.saveAllToFirebase = async function() {
         return;
     }
     
-    // Перевіряємо права
     const role = window.getCurrentRole(currentUserObj.username);
     if (role === "Viewer") {
         const roleInfo = window.getTodayRoleInfo(currentUserObj.username);
@@ -118,6 +109,7 @@ window.saveAllToFirebase = async function() {
     const allData = {
         dailySchedule: window.dailySchedule || [],
         tasks: window.tasks || [],
+        tasksState: window.tasksState || {},
         weeklyMenu: window.weeklyMenu || {},
         supplies: sanitizeFirebaseObject(window.suppliesStatus || {}),
         shoppingList: window.shoppingList || {},
@@ -165,6 +157,10 @@ window.loadAllFromFirebase = async function() {
 
             if (data.tasks && Array.isArray(data.tasks)) {
                 window.tasks = data.tasks;
+            }
+            
+            if (data.tasksState && typeof data.tasksState === 'object') {
+                window.tasksState = data.tasksState;
                 if (typeof window.renderTasks === 'function') {
                     window.renderTasks();
                 }
@@ -296,36 +292,36 @@ window.saveTasksToFirebase = async function() {
         return;
     }
 
-    if (!window.tasks || window.tasks.length === 0) {
+    if (!window.tasksState || Object.keys(window.tasksState).length === 0) {
         alert("Немає даних для збереження!");
         return;
     }
 
     try {
-        await database.ref('allData/tasks').set(window.tasks);
+        await database.ref('allData/tasksState').set(window.tasksState);
         await database.ref('allData/lastUpdated').set(new Date().toISOString());
         await database.ref('allData/lastUpdatedBy').set(currentUserObj.name);
-        alert("✅ Завдання збережено в хмару!");
+        alert("✅ Стан завдань збережено в хмару!");
     } catch (error) {
         handleFirebaseError(error, 'збереження');
     }
 };
 
 window.loadTasksFromFirebase = async function() {
-    const confirmation = confirm("Завантажити завдання з хмари?\n\nПоточні дані будуть замінені!");
+    const confirmation = confirm("Завантажити стан завдань з хмари?\n\nПоточні дані будуть замінені!");
     if (!confirmation) return;
 
     try {
-        const snapshot = await database.ref('allData/tasks').once('value');
+        const snapshot = await database.ref('allData/tasksState').once('value');
         
         if (snapshot.exists()) {
             const data = snapshot.val();
-            if (Array.isArray(data)) {
-                window.tasks = data;
+            if (typeof data === 'object' && data !== null) {
+                window.tasksState = data;
                 if (typeof window.renderTasks === 'function') {
                     window.renderTasks();
                 }
-                alert("✅ Завдання завантажено з хмари!");
+                alert("✅ Стан завдань завантажено з хмари!");
             } else {
                 alert("❌ Помилка: неправильний формат даних!");
             }
@@ -537,4 +533,4 @@ window.loadShopFromFirebase = async function() {
     }
 };
 
-console.log('✅ Firebase config завантажено (dynamic roles with individual secret codes)');
+console.log('✅ Firebase config завантажено (з підтримкою tasksState)');
