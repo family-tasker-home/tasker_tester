@@ -55,17 +55,9 @@ window.createMainApp = function(currentUser, USERS) {
                     <span>Помічник</span>
                 </button>
                 
-                <!-- Global Save/Load Buttons -->
+                <!-- Global Actions -->
                 <div class="global-actions">
-                    <button class="global-save-btn" onclick="window.saveAllToFirebase()" ${!canModify ? 'disabled title="Тільки в робочі дні можна змінювати дані"' : ''}>
-                        <span>☁️</span>
-                        <span>Зберегти все</span>
-                    </button>
-                    <button class="global-load-btn" onclick="window.loadAllFromFirebase()">
-                        <span>☁️</span>
-                        <span>Завантажити все</span>
-                    </button>
-                    <button class="logout-btn" onclick="window.logout()">
+                    <button class="global-actions-logout" onclick="window.logout()">
                         <span>🚪</span>
                         <span>Вийти</span>
                     </button>
@@ -73,7 +65,7 @@ window.createMainApp = function(currentUser, USERS) {
             </nav>
             <div class="sidebar-footer">
                 <p>👻 Spooky Planning 👻</p>
-                <p style="font-size: 0.8em; opacity: 0.7; margin-top: 5px;">Дані автоматично зберігаються в кеш</p>
+                <p style="font-size: 0.8em; opacity: 0.7; margin-top: 5px;">Дані автоматично зберігаються</p>
             </div>
         </div>
 
