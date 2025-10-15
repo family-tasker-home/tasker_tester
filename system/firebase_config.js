@@ -208,62 +208,86 @@ window.autoSaveMenu = async function() {
     }
 };
 
-// Автозбереження запасів
+// Автозбереження запасів (спільні для всіх користувачів)
 window.autoSaveSupplies = async function() {
     try {
         const currentUserObj = window.currentUser ? window.currentUser() : null;
-        if (!currentUserObj) return;
+        if (!currentUserObj) {
+            console.log('⚠️ Користувач не авторизований');
+            return;
+        }
         
         const role = window.getCurrentRole ? window.getCurrentRole(currentUserObj.username) : null;
-        if (role === "Viewer") return;
+        const editRoles = ['Dev', 'Кухня', 'Кладовка', 'Ванна'];
+        
+        if (!editRoles.includes(role)) {
+            console.log(`⚠️ ${role} не має прав редагування запасів`);
+            return;
+        }
         
         const supplies = window.suppliesStatus || {};
         const sanitizedSupplies = sanitizeFirebaseObject(supplies);
         
         const hasData = Object.keys(sanitizedSupplies).length > 0;
         
-        const suppliesRef = database.ref('allData/supplies');
+        if (!window.database) {
+            console.log('⚠️ Firebase не ініціалізовано');
+            return;
+        }
+        
+        const suppliesRef = window.database.ref('shared/supplies');
         await suppliesRef.set(hasData ? sanitizedSupplies : null);
         
-        const updateRef = database.ref('allData/lastUpdated');
+        const updateRef = window.database.ref('shared/lastSuppliesUpdate');
         await updateRef.set(new Date().toISOString());
         
-        const userRef = database.ref('allData/lastUpdatedBy');
+        const userRef = window.database.ref('shared/lastSuppliesUpdateBy');
         await userRef.set(currentUserObj.name);
         
-        console.log('💾 Запаси автозбережено');
+        console.log('💾 Запаси автоматично збережено у Firebase');
     } catch (error) {
         console.error('❌ Помилка автозбереження запасів:', error);
-        handleFirebaseError(error, 'автозбереження запасів');
     }
 };
 
-// Автозбереження списку покупок
+// Автозбереження списку покупок (спільний для всіх користувачів)
 window.autoSaveShoppingList = async function() {
     try {
         const currentUserObj = window.currentUser ? window.currentUser() : null;
-        if (!currentUserObj) return;
+        if (!currentUserObj) {
+            console.log('⚠️ Користувач не авторизований');
+            return;
+        }
         
         const role = window.getCurrentRole ? window.getCurrentRole(currentUserObj.username) : null;
-        if (role === "Viewer") return;
+        const editRoles = ['Dev', 'Кухня', 'Кладовка', 'Ванна'];
+        
+        if (!editRoles.includes(role)) {
+            console.log(`⚠️ ${role} не має прав редагування покупок`);
+            return;
+        }
         
         const shopping = window.shoppingList || {};
         
         const hasData = Object.keys(shopping).length > 0;
         
-        const shoppingRef = database.ref('allData/shoppingList');
+        if (!window.database) {
+            console.log('⚠️ Firebase не ініціалізовано');
+            return;
+        }
+        
+        const shoppingRef = window.database.ref('shared/shopping');
         await shoppingRef.set(hasData ? shopping : null);
         
-        const updateRef = database.ref('allData/lastUpdated');
+        const updateRef = window.database.ref('shared/lastShoppingUpdate');
         await updateRef.set(new Date().toISOString());
         
-        const userRef = database.ref('allData/lastUpdatedBy');
+        const userRef = window.database.ref('shared/lastShoppingUpdateBy');
         await userRef.set(currentUserObj.name);
         
-        console.log('💾 Список покупок автозбережено');
+        console.log('💾 Список покупок автоматично збережено у Firebase');
     } catch (error) {
-        console.error('❌ Помилка автозбереження списку покупок:', error);
-        handleFirebaseError(error, 'автозбереження покупок');
+        console.error('❌ Помилка автозбереження покупок:', error);
     }
 };
 
@@ -374,11 +398,69 @@ window.autoLoadMenuOnLogin = async function(username) {
     }
 };
 
-// Автозавантаження всіх даних при вході
+// Автозавантаження запасів при вході
+window.autoLoadSuppliesOnLogin = async function() {
+    try {
+        console.log('🔄 Завантаження запасів з Firebase...');
+        
+        if (!window.database) {
+            console.log('⚠️ Firebase не ініціалізовано');
+            return;
+        }
+        
+        const ref = window.database.ref('shared/supplies');
+        const snapshot = await ref.once('value');
+        
+        if (snapshot.exists()) {
+            const data = snapshot.val();
+            window.suppliesStatus = data;
+            console.log('✅ Запаси завантажено з Firebase:', data);
+            
+            if (typeof window.renderSupplies === 'function') {
+                window.renderSupplies();
+            }
+        } else {
+            console.log('ℹ️ Запаси не знайдені у Firebase');
+        }
+    } catch (error) {
+        console.error('❌ Помилка завантаження запасів:', error);
+    }
+};
+
+// Автозавантаження списку покупок при вході
+window.autoLoadShoppingListOnLogin = async function() {
+    try {
+        console.log('🔄 Завантаження списку покупок з Firebase...');
+        
+        if (!window.database) {
+            console.log('⚠️ Firebase не ініціалізовано');
+            return;
+        }
+        
+        const ref = window.database.ref('shared/shopping');
+        const snapshot = await ref.once('value');
+        
+        if (snapshot.exists()) {
+            const data = snapshot.val();
+            window.shoppingList = data;
+            console.log('✅ Список покупок завантажено з Firebase:', data);
+            
+            if (typeof window.renderList === 'function') {
+                window.renderList();
+            }
+        } else {
+            console.log('ℹ️ Список покупок не знайдений у Firebase');
+        }
+    } catch (error) {
+        console.error('❌ Помилка завантаження списку покупок:', error);
+    }
+};
+
+// Автозавантаження всіх персональних даних при вході
 window.autoLoadAllDataOnLogin = async function(username) {
     if (!username) return;
     
-    console.log('🔄 Автоматичне завантаження даних...');
+    console.log('🔄 Автоматичне завантаження персональних даних...');
     
     // Завантажуємо персональні дані користувача
     await window.autoLoadTasksOnLogin(username);
@@ -388,4 +470,16 @@ window.autoLoadAllDataOnLogin = async function(username) {
     console.log('✅ Всі персональні дані завантажено з Firebase');
 };
 
-console.log('✅ Firebase config завантажено (персоналізована версія з автозбереженням)');
+// Функція для автозавантаження спільних даних при вході
+window.autoLoadSharedDataOnLogin = async function() {
+    try {
+        console.log('🔄 Завантаження спільних даних...');
+        await window.autoLoadSuppliesOnLogin();
+        await window.autoLoadShoppingListOnLogin();
+        console.log('✅ Спільні дані завантажено');
+    } catch (error) {
+        console.error('❌ Помилка завантаження спільних даних:', error);
+    }
+};
+
+console.log('✅ Firebase config завантажено (персоналізована версія з автозбереженням та спільними даними)');
