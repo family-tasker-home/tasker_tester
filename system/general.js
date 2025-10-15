@@ -1,7 +1,7 @@
 // ===== GENERAL SITE LOGIC =====
 
 // Створення основного додатку (викликається з login.js після входу)
-window.createMainApp = function(currentUser, AVATARS) {
+window.createMainApp = function(currentUser, USERS) {
     const mainContent = document.getElementById('mainAppContent');
     
     if (!mainContent) {
@@ -9,14 +9,19 @@ window.createMainApp = function(currentUser, AVATARS) {
         return;
     }
     
+    // Отримуємо інформацію про роль на сьогодні
+    const roleInfo = window.getTodayRoleInfo ? window.getTodayRoleInfo(currentUser.username) : { role: currentUser.role };
+    const todayRole = roleInfo.role || currentUser.role;
+    const canModify = todayRole !== "Viewer";
+    
     mainContent.innerHTML = `
         <!-- Sidebar Navigation -->
         <div class="sidebar" id="sidebar">
             <div class="sidebar-header">
                 <h2>🎃 Кухонний Планувальник</h2>
                 <div class="user-badge">
-                    <span>${AVATARS[currentUser.username] || '👤'} ${currentUser.name}</span>
-                    <span class="role-badge role-${currentUser.role.toLowerCase()}">${currentUser.role}</span>
+                    <span>${currentUser.avatar || '👤'} ${currentUser.name}</span>
+                    <span class="role-badge role-${todayRole.toLowerCase()}">${todayRole}</span>
                 </div>
                 <button class="close-btn" onclick="window.toggleSidebar()">✕</button>
             </div>
@@ -45,16 +50,14 @@ window.createMainApp = function(currentUser, AVATARS) {
                     <span class="nav-icon">🛒</span>
                     <span>Список покупок</span>
                 </button>
-                ${currentUser.role === 'Dev' ? `
                 <button class="nav-item" onclick="window.showSection('assistant')">
                     <span class="nav-icon">🤖</span>
                     <span>Помічник</span>
                 </button>
-                ` : ''}
                 
                 <!-- Global Save/Load Buttons -->
                 <div class="global-actions">
-                    <button class="global-save-btn" onclick="window.saveAllToFirebase()" ${!window.canModifyData() ? 'disabled title="Тільки Dev може змінювати дані"' : ''}>
+                    <button class="global-save-btn" onclick="window.saveAllToFirebase()" ${!canModify ? 'disabled title="Тільки в робочі дні можна змінювати дані"' : ''}>
                         <span>☁️</span>
                         <span>Зберегти все</span>
                     </button>
@@ -92,11 +95,11 @@ window.createMainApp = function(currentUser, AVATARS) {
     `;
     
     // Ініціалізуємо додаток
-    initializeApp(currentUser, AVATARS);
+    initializeApp(currentUser, USERS);
 };
 
 // Ініціалізація основного додатку
-function initializeApp(currentUser, AVATARS) {
+function initializeApp(currentUser, USERS) {
     // Ініціалізація порожніх структур даних
     if (typeof window.dailySchedule === 'undefined') window.dailySchedule = [];
     if (typeof window.tasks === 'undefined') window.tasks = [];
@@ -122,10 +125,8 @@ function initializeApp(currentUser, AVATARS) {
     if (typeof window.createSuppliesSection === 'function') window.createSuppliesSection();
     if (typeof window.createShopSection === 'function') window.createShopSection();
     
-    // Створення секції помічника (тільки для Dev)
-    if (currentUser && currentUser.role === 'Dev') {
-        createAssistantSection(currentUser, AVATARS);
-    }
+    // Створення секції помічника (для ВСІХ користувачів)
+    createAssistantSection(currentUser, USERS);
     
     // Ініціалізація запасів
     if (typeof window.initializeSupplies === 'function') {
@@ -170,10 +171,14 @@ function initializeApp(currentUser, AVATARS) {
     console.log('✅ Кухонний Планувальник готовий до роботи!');
 }
 
-// Створення секції помічника
-function createAssistantSection(currentUser, AVATARS) {
+// Створення секції помічника (доступна для ВСІХ)
+function createAssistantSection(currentUser, USERS) {
     const assistantSection = document.getElementById('assistant-section');
     if (!assistantSection) return;
+    
+    // Отримуємо аватар користувача
+    const userAvatar = currentUser.avatar || '👤';
+    const userName = currentUser.name || 'Користувач';
     
     assistantSection.innerHTML = `
         <div id="assistant-content">
@@ -181,7 +186,7 @@ function createAssistantSection(currentUser, AVATARS) {
                 <div class="chat-header">
                     <h2><span class="jarvis-icon">🤖</span> Джарвіс - Кухонний Асистент</h2>
                     <div class="chat-user-info">
-                        <span>Профіль: ${AVATARS[currentUser.username] || '👤'} ${currentUser.name}</span>
+                        <span>Профіль: ${userAvatar} ${userName}</span>
                     </div>
                 </div>
                 <div class="chat-messages" id="chatMessages"></div>
@@ -226,15 +231,6 @@ window.toggleSidebar = function() {
 
 // Показ секції
 window.showSection = function(sectionName) {
-    // Перевірка доступу до секції помічника
-    if (sectionName === 'assistant') {
-        const currentUser = window.currentUser ? window.currentUser() : null;
-        if (!currentUser || currentUser.role !== 'Dev') {
-            alert('❌ Доступ до помічника мають тільки користувачі з роллю Dev!');
-            return;
-        }
-    }
-
     const sections = document.querySelectorAll('.section');
     sections.forEach(section => section.classList.remove('active'));
 
@@ -260,7 +256,13 @@ window.showSection = function(sectionName) {
 // Оновлені функції для перевірки прав доступу
 window.checkSavePermissions = function() {
     if (!window.canSaveToFirebase()) {
-        alert('❌ Тільки користувачі з роллю Dev можуть зберігати дані в хмару!');
+        const currentUser = window.currentUser ? window.currentUser() : null;
+        if (currentUser) {
+            const roleInfo = window.getTodayRoleInfo ? window.getTodayRoleInfo(currentUser.username) : {};
+            alert(`❌ У вас немає прав для збереження даних!\n\nВаша роль сьогодні: ${roleInfo.role || 'Viewer'}`);
+        } else {
+            alert('❌ Користувач не визначений!');
+        }
         return false;
     }
     return true;
@@ -268,7 +270,13 @@ window.checkSavePermissions = function() {
 
 window.checkModifyPermissions = function() {
     if (!window.canModifyData()) {
-        alert('❌ Тільки користувачі з роллю Dev можуть змінювати дані!');
+        const currentUser = window.currentUser ? window.currentUser() : null;
+        if (currentUser) {
+            const roleInfo = window.getTodayRoleInfo ? window.getTodayRoleInfo(currentUser.username) : {};
+            alert(`❌ У вас немає прав для зміни даних!\n\nВаша роль сьогодні: ${roleInfo.role || 'Viewer'}`);
+        } else {
+            alert('❌ Користувач не визначений!');
+        }
         return false;
     }
     return true;
