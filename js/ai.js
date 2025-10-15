@@ -192,7 +192,7 @@ async function sendMessageToAI(message) {
         aiResponse = cleanMarkdown(aiResponse);
 
         // ОБРОБКА КОМАНД і АВТОЗБЕРЕЖЕННЯ
-        const commandsExecuted = executeCommands(aiResponse);
+const commandsExecuted = executeCommands(aiResponse);
         if (commandsExecuted.length > 0) {
             console.log('✅ Виконано команд:', commandsExecuted.length);
             
