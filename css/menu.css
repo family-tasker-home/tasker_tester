@@ -1,0 +1,244 @@
+/* ===== MENU SECTION STYLES ===== */
+
+#menu-section .container {
+    max-width: 1400px;
+    margin: 0 auto;
+    background: rgba(26, 26, 46, 0.95);
+    border-radius: 20px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
+    overflow: hidden;
+    border: 3px solid #cc5500;
+}
+
+#menu-section .header {
+    background: linear-gradient(135deg, #cc5500 0%, #2d1b4e 100%);
+    color: white;
+    padding: 40px 30px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+}
+
+#menu-section .header::after {
+    content: '🎃';
+    position: absolute;
+    top: 50%;
+    right: 30px;
+    transform: translateY(-50%);
+    font-size: 3em;
+    opacity: 0.2;
+}
+
+#menu-section .header h1 {
+    font-size: 2.8em;
+    margin-bottom: 10px;
+    text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.4);
+}
+
+#menu-section .header p {
+    opacity: 0.95;
+    font-size: 1.2em;
+}
+
+#menu-section .content {
+    padding: 30px;
+}
+
+.add-menu-section {
+    margin-bottom: 30px;
+    padding: 25px;
+    background: linear-gradient(135deg, #2d2d3d 0%, #3a3a4a 100%);
+    border-radius: 15px;
+    border: 3px solid #cc5500;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.6);
+}
+
+.add-menu-section h2 {
+    color: #cc5500;
+    margin-bottom: 15px;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.add-menu-form {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.add-menu-form select,
+.add-menu-form input[type="text"] {
+    flex: 1;
+    min-width: 150px;
+    padding: 12px 15px;
+    border: 2px solid #cc5500;
+    border-radius: 10px;
+    font-size: 1em;
+    transition: all 0.3s ease;
+    background: rgba(45, 45, 65, 0.8);
+    color: #d0d0d0;
+}
+
+.add-menu-form select:focus,
+.add-menu-form input:focus {
+    outline: none;
+    border-color: #b8860b;
+    box-shadow: 0 0 0 3px rgba(204, 85, 0, 0.2);
+}
+
+.add-menu-form button {
+    padding: 12px 30px;
+    background: linear-gradient(135deg, #cc5500 0%, #660000 100%);
+    color: white;
+    border: 2px solid #b8860b;
+    border-radius: 10px;
+    font-size: 1em;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+}
+
+.add-menu-form button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 15px rgba(204, 85, 0, 0.5);
+}
+
+/* Days Grid - 3 columns on large screens */
+.days-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+}
+
+.day-card {
+    background: linear-gradient(135deg, #2d2d3d 0%, #3a3a4a 100%);
+    border-radius: 15px;
+    padding: 20px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.6);
+    border: 2px solid #cc5500;
+    transition: all 0.3s ease;
+    animation: slideIn 0.3s ease-out;
+}
+
+.day-card:hover {
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.7);
+    border-color: #660000;
+    transform: translateY(-5px);
+}
+
+.day-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #cc5500;
+}
+
+.day-title {
+    font-size: 1.3em;
+    font-weight: bold;
+    color: #d0d0d0;
+    flex: 1;
+}
+
+.meal-group {
+    margin-bottom: 15px;
+    padding: 12px;
+    background: rgba(45, 45, 65, 0.6);
+    border-left: 4px solid #2d1b4e;
+    border-radius: 8px;
+}
+
+.meal-title {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    font-weight: bold;
+    color: #b8860b;
+    margin-bottom: 10px;
+    font-size: 1.1em;
+}
+
+.meal-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    background: rgba(60, 60, 80, 0.6);
+    border-radius: 6px;
+    margin-bottom: 6px;
+    transition: all 0.2s ease;
+}
+
+.meal-item:hover {
+    background: rgba(70, 70, 90, 0.8);
+    transform: translateX(5px);
+}
+
+.meal-name {
+    color: #d0d0d0;
+    flex: 1;
+}
+
+.delete-meal-btn {
+    background: #660000;
+    color: white;
+    border: 2px solid #440000;
+    padding: 4px 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: all 0.2s ease;
+    font-size: 0.85em;
+}
+
+.delete-meal-btn:hover {
+    background: #440000;
+    transform: scale(1.05);
+}
+
+.empty-day {
+    text-align: center;
+    padding: 15px;
+    color: #888;
+    font-style: italic;
+}
+
+.clear-btn {
+    background: linear-gradient(135deg, #660000 0%, #440000 100%);
+    border-color: #440000;
+    color: white;
+}
+
+.clear-btn:hover {
+    box-shadow: 0 5px 15px rgba(102, 0, 0, 0.6);
+}
+
+/* ===== RESPONSIVE DESIGN ===== */
+@media (max-width: 1200px) {
+    .days-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .days-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .add-menu-form {
+        flex-direction: column;
+    }
+
+    .add-menu-form select,
+    .add-menu-form input[type="text"] {
+        width: 100%;
+    }
+}
+
+@media (max-width: 480px) {
+    .add-menu-section {
+        padding: 15px;
+    }
+}

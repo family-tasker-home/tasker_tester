@@ -1,0 +1,250 @@
+/* ===== DAILY SCHEDULE STYLES ===== */
+
+#daily-section .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    background: rgba(26, 26, 46, 0.95);
+    border-radius: 20px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
+    overflow: hidden;
+    border: 3px solid #cc5500;
+}
+
+#daily-section .header {
+    background: linear-gradient(135deg, #cc5500 0%, #2d1b4e 100%);
+    color: white;
+    padding: 40px 30px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+}
+
+#daily-section .header::after {
+    content: '🎃';
+    position: absolute;
+    top: 50%;
+    right: 30px;
+    transform: translateY(-50%);
+    font-size: 3em;
+    opacity: 0.2;
+}
+
+#daily-section .header h1 {
+    font-size: 2.8em;
+    margin-bottom: 10px;
+    text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.4);
+}
+
+#daily-section .header p {
+    opacity: 0.95;
+    font-size: 1.2em;
+}
+
+#daily-section .content {
+    padding: 30px;
+}
+
+#daily-section .add-task {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 30px;
+    flex-wrap: wrap;
+}
+
+#daily-section input[type="text"],
+#daily-section input[type="time"] {
+    flex: 1;
+    min-width: 150px;
+    padding: 12px 15px;
+    border: 2px solid #cc5500;
+    border-radius: 10px;
+    font-size: 1em;
+    transition: all 0.3s ease;
+    background: rgba(45, 45, 65, 0.8);
+    color: #d0d0d0;
+}
+
+#daily-section input:focus {
+    outline: none;
+    border-color: #b8860b;
+    box-shadow: 0 0 0 3px rgba(204, 85, 0, 0.2);
+}
+
+#daily-section button {
+    padding: 12px 30px;
+    background: linear-gradient(135deg, #cc5500 0%, #660000 100%);
+    color: white;
+    border: 2px solid #b8860b;
+    border-radius: 10px;
+    font-size: 1em;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+}
+
+#daily-section button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 15px rgba(204, 85, 0, 0.5);
+}
+
+#daily-section button:active {
+    transform: translateY(0);
+}
+
+.schedule-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.schedule-item {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 20px;
+    background: linear-gradient(135deg, #2d2d3d 0%, #3a3a4a 100%);
+    border-radius: 15px;
+    border: 2px solid #cc5500;
+    transition: all 0.3s ease;
+    animation: slideIn 0.3s ease-out;
+}
+
+.schedule-item:hover {
+    background: linear-gradient(135deg, #3a3a4a 0%, #454555 100%);
+    transform: translateX(5px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.6);
+}
+
+.schedule-time {
+    font-weight: bold;
+    color: #cc5500;
+    font-size: 1.2em;
+    min-width: 60px;
+}
+
+.schedule-task {
+    flex: 1;
+    font-size: 1.1em;
+    color: #d0d0d0;
+}
+
+.delete-btn {
+    background: #660000;
+    color: white;
+    border: 2px solid #440000;
+    padding: 6px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: all 0.2s ease;
+}
+
+.delete-btn:hover {
+    background: #440000;
+    transform: scale(1.05);
+}
+
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: #2d1b4e;
+}
+
+.empty-state svg {
+    width: 120px;
+    height: 120px;
+    margin-bottom: 20px;
+    opacity: 0.3;
+    fill: #cc5500;
+}
+
+.empty-state p {
+    font-size: 1.2em;
+    color: #888;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 15px;
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 2px solid #cc5500;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.action-buttons button {
+    padding: 15px 40px;
+    font-size: 1.1em;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.save-btn {
+    background: linear-gradient(135deg, #4a3d70 0%, #2d1b4e 100%);
+    border-color: #2d1b4e;
+    color: #d0d0d0;
+}
+
+.save-btn:hover {
+    box-shadow: 0 5px 15px rgba(45, 27, 78, 0.6);
+}
+
+.load-btn {
+    background: linear-gradient(135deg, #004d40 0%, #003d33 100%);
+    border-color: #003d33;
+    color: #d0d0d0;
+}
+
+.load-btn:hover {
+    box-shadow: 0 5px 15px rgba(0, 77, 64, 0.6);
+}
+
+/* ===== RESPONSIVE DESIGN ===== */
+@media (max-width: 768px) {
+    #daily-section .header h1 {
+        font-size: 2em;
+    }
+
+    #daily-section .add-task {
+        flex-direction: column;
+    }
+
+    #daily-section input[type="text"],
+    #daily-section input[type="time"] {
+        width: 100%;
+    }
+
+    .schedule-item {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .action-buttons {
+        flex-direction: column;
+    }
+
+    .action-buttons button {
+        width: 100%;
+    }
+}
+
+@media (max-width: 480px) {
+    #daily-section .content {
+        padding: 15px;
+    }
+
+    #daily-section .header {
+        padding: 25px 15px;
+    }
+
+    #daily-section .header h1 {
+        font-size: 1.5em;
+    }
+
+    #daily-section .header p {
+        font-size: 0.9em;
+    }
+}

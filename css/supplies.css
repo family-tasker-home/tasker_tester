@@ -1,0 +1,203 @@
+/* ===== SUPPLIES SECTION STYLES ===== */
+
+#supplies-section .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    background: rgba(26, 26, 46, 0.95);
+    border-radius: 20px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
+    overflow: hidden;
+    border: 3px solid #cc5500;
+}
+
+#supplies-section .header {
+    background: linear-gradient(135deg, #cc5500 0%, #2d1b4e 100%);
+    color: white;
+    padding: 40px 30px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+}
+
+#supplies-section .header::after {
+    content: '🎃';
+    position: absolute;
+    top: 50%;
+    right: 30px;
+    transform: translateY(-50%);
+    font-size: 3em;
+    opacity: 0.2;
+}
+
+#supplies-section .header h1 {
+    font-size: 2.8em;
+    margin-bottom: 10px;
+    text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.4);
+}
+
+#supplies-section .header p {
+    opacity: 0.95;
+    font-size: 1.2em;
+}
+
+#supplies-section .content {
+    padding: 30px;
+}
+
+.supplies-legend {
+    display: flex;
+    gap: 30px;
+    justify-content: center;
+    padding: 20px;
+    background: linear-gradient(135deg, #2d2d3d 0%, #3a3a4a 100%);
+    border-radius: 15px;
+    margin-bottom: 30px;
+    border: 2px solid #cc5500;
+    flex-wrap: wrap;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 1.1em;
+    font-weight: bold;
+    color: #d0d0d0;
+}
+
+.legend-icon {
+    font-size: 1.5em;
+}
+
+.supplies-categories {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+    gap: 25px;
+    margin-bottom: 30px;
+}
+
+.supply-category {
+    background: linear-gradient(135deg, #2d2d3d 0%, #3a3a4a 100%);
+    border-radius: 15px;
+    padding: 20px;
+    border: 2px solid #cc5500;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.6);
+    transition: all 0.3s ease;
+}
+
+.supply-category:hover {
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.7);
+    transform: translateY(-3px);
+}
+
+.supply-category-header {
+    padding-bottom: 15px;
+    margin-bottom: 15px;
+    border-bottom: 2px solid #cc5500;
+}
+
+.supply-category-header h3 {
+    color: #d0d0d0;
+    font-size: 1.3em;
+    margin: 0;
+}
+
+.supply-items {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.supply-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 15px;
+    background: rgba(45, 45, 65, 0.6);
+    border-radius: 10px;
+    transition: all 0.2s ease;
+    border: 2px solid transparent;
+}
+
+.supply-item:hover {
+    background: rgba(60, 60, 80, 0.8);
+    border-color: #cc5500;
+}
+
+.supply-name {
+    flex: 1;
+    color: #d0d0d0;
+    font-size: 1em;
+    text-align: left;
+}
+
+.supply-status-buttons {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.supply-status-btn {
+    width: 35px;
+    height: 35px;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    font-size: 1.3em;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: rgba(60, 60, 80, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+}
+
+.supply-status-btn:hover {
+    transform: scale(1.1);
+    border-color: #cc5500;
+}
+
+.supply-status-btn.active {
+    border-color: #cc5500;
+    box-shadow: 0 0 10px rgba(204, 85, 0, 0.5);
+    transform: scale(1.15);
+}
+
+.download-btn {
+    background: linear-gradient(135deg, #004d40 0%, #003d33 100%);
+    border-color: #003d33;
+    color: white;
+}
+
+.download-btn:hover {
+    box-shadow: 0 5px 15px rgba(0, 77, 64, 0.6);
+}
+
+/* ===== RESPONSIVE DESIGN ===== */
+@media (max-width: 768px) {
+    .supplies-categories {
+        grid-template-columns: 1fr;
+    }
+    
+    .supplies-legend {
+        gap: 15px;
+    }
+}
+
+@media (max-width: 480px) {
+    .supply-status-btn {
+        width: 30px;
+        height: 30px;
+        font-size: 1.1em;
+    }
+    
+    .supplies-legend {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .supply-category {
+        padding: 15px;
+    }
+}
