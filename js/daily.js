@@ -33,40 +33,36 @@ window.createDailySection = function() {
                 <h1>📅 Розпорядок дня</h1>
                 <p>Профіль: <strong>${currentUser.avatar} ${currentUser.name}</strong></p>
                 <p style="font-size: 0.9em; margin-top: 5px;">Ваша роль сьогодні (${dayName}): <strong>${todayRole}</strong></p>
-                ${canModify ? '<p style="color: #4CAF50; font-size: 0.9em; margin-top: 5px;">💾 Всі зміни автоматично зберігаються</p>' : '<p style="color: #ffa500; font-size: 0.9em; margin-top: 5px;">Сьогодні у вас вихідний! 🎉</p>'}
+                <p style="color: #4CAF50; font-size: 0.9em; margin-top: 5px;">💾 Всі зміни автоматично зберігаються в базу</p>
             </div>
             
             <div class="content">
-                ${canModify ? `
-                    <div class="add-task">
-                        <input type="time" id="dailyTimeInput" placeholder="Година">
-                        <input type="text" id="dailyTaskInput" placeholder="Введіть завдання...">
-                        <button onclick="window.addDailyTask()">➕ Додати</button>
-                    </div>
-                ` : ''}
+                <div class="add-task">
+                    <input type="time" id="dailyTimeInput" placeholder="Година">
+                    <input type="text" id="dailyTaskInput" placeholder="Введіть завдання...">
+                    <button onclick="window.addDailyTask()">➕ Додати</button>
+                </div>
 
                 <div id="dailyScheduleList" class="schedule-list">
                     <div class="empty-state">
                         <svg viewBox="0 0 24 24" fill="currentColor">
                             <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/>
                         </svg>
-                        <p>${canModify ? 'Почніть додавати завдання до вашого розпорядку дня' : 'Розпорядок дня порожній'}</p>
+                        <p>Почніть додавати завдання до вашого розпорядку дня</p>
                     </div>
                 </div>
             </div>
         </div>
     `;
     
-    // Додаємо обробник Enter для поля вводу (тільки якщо можна редагувати)
-    if (canModify) {
-        const taskInput = document.getElementById('dailyTaskInput');
-        if (taskInput) {
-            taskInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') {
-                    window.addDailyTask();
-                }
-            });
-        }
+    // Додаємо обробник Enter для поля вводу
+    const taskInput = document.getElementById('dailyTaskInput');
+    if (taskInput) {
+        taskInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                window.addDailyTask();
+            }
+        });
     }
 };
 
@@ -86,11 +82,8 @@ function getUserSchedule() {
 // Додати нове завдання
 window.addDailyTask = function() {
     const currentUser = window.currentUser ? window.currentUser() : null;
-    if (!currentUser) return;
-    
-    const roleInfo = window.getTodayRoleInfo ? window.getTodayRoleInfo(currentUser.username) : null;
-    if (roleInfo && roleInfo.role === 'Viewer') {
-        alert('❌ Сьогодні у вас вихідний! Ви не можете додавати завдання.');
+    if (!currentUser) {
+        alert('❌ Користувач не визначений!');
         return;
     }
     
@@ -112,19 +105,28 @@ window.addDailyTask = function() {
         window.dailyScheduleState[username] = [];
     }
     
+    // Додаємо завдання
     window.dailyScheduleState[username].push({ time, task });
+    
+    // Сортуємо за часом
     window.dailyScheduleState[username].sort((a, b) => a.time.localeCompare(b.time));
 
+    // Очищаємо поля вводу
     timeInput.value = '';
     taskInput.value = '';
     
+    // Рендеримо список
     window.renderDailySchedule();
     
-    // Автоматичне збереження в Firebase
+    console.log(`✅ Додано завдання для ${username}:`, { time, task });
+    console.log('📊 Поточний розпорядок:', window.dailyScheduleState[username]);
+    
+    // Автоматичне збереження в Firebase (тільки розпорядку цього користувача)
     if (typeof window.autoSaveDailySchedule === 'function') {
         window.autoSaveDailySchedule();
     }
     
+    // Додатково зберігаємо в локальний кеш
     if (typeof window.autoSaveToCache === 'function') {
         window.autoSaveToCache();
     }
@@ -133,25 +135,30 @@ window.addDailyTask = function() {
 // Видалити завдання
 window.deleteDailyTask = function(index) {
     const currentUser = window.currentUser ? window.currentUser() : null;
-    if (!currentUser) return;
-    
-    const roleInfo = window.getTodayRoleInfo ? window.getTodayRoleInfo(currentUser.username) : null;
-    if (roleInfo && roleInfo.role === 'Viewer') {
-        alert('❌ Сьогодні у вас вихідний! Ви не можете видаляти завдання.');
+    if (!currentUser) {
+        alert('❌ Користувач не визначений!');
         return;
     }
     
     const username = currentUser.username;
     if (!window.dailyScheduleState[username]) return;
     
+    // Видаляємо завдання
+    const deletedTask = window.dailyScheduleState[username][index];
     window.dailyScheduleState[username].splice(index, 1);
+    
+    // Рендеримо список
     window.renderDailySchedule();
+    
+    console.log(`🗑️ Видалено завдання для ${username}:`, deletedTask);
+    console.log('📊 Поточний розпорядок:', window.dailyScheduleState[username]);
     
     // Автоматичне збереження в Firebase
     if (typeof window.autoSaveDailySchedule === 'function') {
         window.autoSaveDailySchedule();
     }
     
+    // Додатково зберігаємо в локальний кеш
     if (typeof window.autoSaveToCache === 'function') {
         window.autoSaveToCache();
     }
@@ -174,28 +181,17 @@ window.renderDailySchedule = function() {
     }
     
     const schedule = getUserSchedule();
-    const roleInfo = window.getTodayRoleInfo ? window.getTodayRoleInfo(currentUser.username) : null;
-    const canModify = roleInfo && roleInfo.role !== 'Viewer';
     
     if (!schedule || schedule.length === 0) {
-        if (roleInfo && roleInfo.role === 'Viewer') {
-            list.innerHTML = `
-                <div class="empty-state">
-                    <div class="emoji">🎉</div>
-                    <h2>Сьогодні у вас вихідний!</h2>
-                    <p style="font-size: 1.2em; color: #d0d0d0;">Відпочивайте та насолоджуйтесь днем! 😊</p>
-                </div>
-            `;
-        } else {
-            list.innerHTML = `
-                <div class="empty-state">
-                    <svg viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/>
-                    </svg>
-                    <p>Почніть додавати завдання до вашого розпорядку дня</p>
-                </div>
-            `;
-        }
+        list.innerHTML = `
+            <div class="empty-state">
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/>
+                </svg>
+                <p>Почніть додавати завдання до вашого розпорядку дня</p>
+                <p style="font-size: 0.9em; color: #888; margin-top: 10px;">Це ваш персональний розпорядок - тільки ви можете його бачити та редагувати</p>
+            </div>
+        `;
         return;
     }
 
@@ -203,21 +199,65 @@ window.renderDailySchedule = function() {
         <div class="schedule-item">
             <div class="schedule-time">${item.time}</div>
             <div class="schedule-task">${item.task}</div>
-            ${canModify ? `<button class="delete-btn" onclick="window.deleteDailyTask(${index})">🗑️</button>` : ''}
+            <button class="delete-btn" onclick="window.deleteDailyTask(${index})">🗑️</button>
         </div>
     `).join('');
+    
+    console.log(`📋 Відображено ${schedule.length} завдань для ${currentUser.username}`);
 };
 
-// Експорт для Firebase
+// Експорт для Firebase (повертає розпорядок ТІЛЬКИ поточного користувача)
 window.getDailyScheduleForSave = function() {
-    return window.dailyScheduleState;
+    const currentUser = window.currentUser ? window.currentUser() : null;
+    if (!currentUser) return [];
+    
+    const username = currentUser.username;
+    return window.dailyScheduleState[username] || [];
 };
 
-window.loadDailyScheduleFromSave = function(state) {
-    if (state && typeof state === 'object') {
-        window.dailyScheduleState = state;
+// Завантаження розпорядку з Firebase (для поточного користувача)
+window.loadDailyScheduleFromSave = function(username, data) {
+    if (!username || !data) return;
+    
+    if (!window.dailyScheduleState) {
+        window.dailyScheduleState = {};
+    }
+    
+    window.dailyScheduleState[username] = data;
+    
+    // Рендеримо тільки якщо це поточний користувач
+    const currentUser = window.currentUser ? window.currentUser() : null;
+    if (currentUser && currentUser.username === username) {
         window.renderDailySchedule();
     }
+    
+    console.log(`✅ Розпорядок завантажено для ${username}:`, data);
 };
 
-console.log('✅ Daily schedule system завантажено (персоналізована версія)');
+// Додаткова функція для показу статусу збереження
+window.showSaveStatus = function(message, type = 'success') {
+    const statusDiv = document.createElement('div');
+    statusDiv.className = `save-status ${type}`;
+    statusDiv.textContent = message;
+    statusDiv.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: ${type === 'success' ? '#4CAF50' : '#f44336'};
+        color: white;
+        padding: 12px 20px;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        z-index: 10000;
+        animation: slideIn 0.3s ease;
+    `;
+    
+    document.body.appendChild(statusDiv);
+    
+    setTimeout(() => {
+        statusDiv.style.animation = 'slideOut 0.3s ease';
+        setTimeout(() => statusDiv.remove(), 300);
+    }, 2000);
+};
+
+console.log('✅ Daily schedule system завантажено (персоналізована версія з автозбереженням)');
