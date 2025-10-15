@@ -105,9 +105,13 @@ window.createSuppliesSection = function() {
                         <span>🛒</span>
                         <span>Додати в список покупок</span>
                     </button>
-                    <button class="action-btn action-btn-secondary" onclick="window.clearChecked()" ${!canEdit ? 'disabled title="Редагування недоступне"' : ''}>
+                    <button class="action-btn action-btn-primary" onclick="window.clearPurchased()" ${!canEdit ? 'disabled title="Редагування недоступне"' : ''}>
                         <span>✓</span>
-                        <span>Очистити купленне</span>
+                        <span>Очистити покупленне</span>
+                    </button>
+                    <button class="action-btn action-btn-secondary" onclick="window.clearAllChecked()" ${!canEdit ? 'disabled title="Редагування недоступне"' : ''}>
+                        <span>🗑️</span>
+                        <span>Видалити з покупок</span>
                     </button>
                 </div>
             </div>
@@ -138,12 +142,10 @@ window.setSupplyStatus = function(categoryKey, item, status) {
         return;
     }
     
-    // Перевірка існування категорії
     if (!window.suppliesStatus[categoryKey]) {
         window.suppliesStatus[categoryKey] = {};
     }
     
-    // Перевірка існування товару
     if (!window.suppliesStatus[categoryKey][item]) {
         window.suppliesStatus[categoryKey][item] = null;
     }
@@ -155,7 +157,6 @@ window.setSupplyStatus = function(categoryKey, item, status) {
     }
     window.renderSupplies();
     
-    // Автозбереження в Firebase
     if (typeof window.autoSaveSupplies === 'function') {
         window.autoSaveSupplies();
     }
@@ -178,10 +179,8 @@ window.renderSupplies = function() {
         const items = category.items;
         
         const itemsHtml = items.map(item => {
-            // Безпечна перевірка існування даних
             let status = null;
             if (window.suppliesStatus && window.suppliesStatus[categoryKey]) {
-                // Перевіряємо як оригінальний ключ, так і очищений
                 const originalKey = item;
                 const sanitizedKey = sanitizeFirebaseKey(item);
                 
@@ -236,7 +235,6 @@ window.addToShoppingList = function() {
         Object.keys(window.suppliesStatus[categoryKey]).forEach(item => {
             const status = window.suppliesStatus[categoryKey][item];
             if (status === 'low' || status === 'needed') {
-                // Знаходимо оригінальну назву товару в категорії
                 const originalItem = suppliesCategories[categoryKey]?.items.find(original => 
                     original === item || sanitizeFirebaseKey(original) === item
                 ) || item;
@@ -250,7 +248,6 @@ window.addToShoppingList = function() {
         return;
     }
     
-    // Мапінг безпечних ключів до категорій списку покупок
     const categoryMapping = {
         'meat_fish': '🍖 Мясо та риба',
         'eggs_dairy': '🥛 Молочні продукти',
@@ -293,9 +290,95 @@ window.addToShoppingList = function() {
     }
 };
 
-window.clearChecked = function() {
+// НОВА ФУНКЦІЯ: Очистити покупленне (перемістити в список покупок)
+window.clearPurchased = function() {
     if (!canEditSupplies()) {
         alert('❌ У вас немає прав редагування запасів!');
+        return;
+    }
+    
+    let itemsToMove = [];
+    
+    Object.keys(window.suppliesStatus).forEach(categoryKey => {
+        Object.keys(window.suppliesStatus[categoryKey]).forEach(item => {
+            const status = window.suppliesStatus[categoryKey][item];
+            if (status === 'needed') {
+                const originalItem = suppliesCategories[categoryKey]?.items.find(original => 
+                    original === item || sanitizeFirebaseKey(original) === item
+                ) || item;
+                itemsToMove.push({ 
+                    name: originalItem, 
+                    categoryKey: categoryKey,
+                    item: item
+                });
+            }
+        });
+    });
+    
+    if (itemsToMove.length === 0) {
+        alert('Немає товарів зі статусом "Потрібно купити" (🔴)');
+        return;
+    }
+    
+    const categoryMapping = {
+        'meat_fish': '🍖 Мясо та риба',
+        'eggs_dairy': '🥛 Молочні продукти',
+        'grains_pasta': '🍝 Бакалія',
+        'vegetables': '🥗 Овочі та фрукти',
+        'fruits_nuts': '🥗 Овочі та фрукти',
+        'spices_oils': '🍝 Бакалія',
+        'bread_bakery': '🥖 Хліб та випічка',
+        'beverages': '🥤 Напої',
+        'canned_goods': '🍝 Бакалія',
+        'baking_supplies': '🍝 Бакалія'
+    };
+    
+    if (typeof window.shoppingList !== 'undefined') {
+        let addedCount = 0;
+        
+        itemsToMove.forEach(itemData => {
+            const shopCategory = categoryMapping[itemData.categoryKey] || '📦 Інше';
+            
+            if (!window.shoppingList[shopCategory]) window.shoppingList[shopCategory] = [];
+            
+            const exists = window.shoppingList[shopCategory].some(shopItem => 
+                shopItem.name.toLowerCase() === itemData.name.toLowerCase()
+            );
+            
+            if (!exists) {
+                window.shoppingList[shopCategory].push({
+                    id: Date.now() + Math.random(),
+                    name: itemData.name,
+                    checked: false
+                });
+                addedCount++;
+            }
+            
+            // Видаляємо статус зі складу
+            window.suppliesStatus[itemData.categoryKey][itemData.item] = null;
+        });
+        
+        if (typeof window.renderList === 'function') window.renderList();
+        if (typeof window.renderSupplies === 'function') window.renderSupplies();
+        if (typeof window.autoSaveShoppingList === 'function') window.autoSaveShoppingList();
+        if (typeof window.autoSaveSupplies === 'function') window.autoSaveSupplies();
+        if (typeof window.autoSaveToCache === 'function') window.autoSaveToCache();
+        
+        alert(`✅ Переміщено ${addedCount} товарів до списку покупок!\n\nДані автоматично синхронізовані з Firebase.`);
+    } else {
+        alert('Помилка: список покупок не завантажено!');
+    }
+};
+
+// НОВА ФУНКЦІЯ: Видалити всі куплені з списку покупок
+window.clearAllChecked = function() {
+    if (!canEditSupplies()) {
+        alert('❌ У вас немає прав редагування запасів!');
+        return;
+    }
+    
+    if (typeof window.shoppingList === 'undefined' || !window.shoppingList) {
+        alert('Список покупок порожній');
         return;
     }
     
@@ -311,13 +394,14 @@ window.clearChecked = function() {
     }
     
     if (clearedCount > 0) {
-        alert(`Видалено ${clearedCount} куплених товарів`);
-        window.renderList();
+        if (typeof window.renderList === 'function') window.renderList();
         if (typeof window.autoSaveShoppingList === 'function') window.autoSaveShoppingList();
         if (typeof window.autoSaveToCache === 'function') window.autoSaveToCache();
+        
+        alert(`✅ Видалено ${clearedCount} куплених товарів зі списку`);
     } else {
         alert('Немає відмічених товарів для видалення');
     }
 };
 
-console.log('✅ Supplies system завантажено (з правами доступу та авто-збереженням)');
+console.log('✅ Supplies system завантажено (з функцією очищення покупленне в список)');
