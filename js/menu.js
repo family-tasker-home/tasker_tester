@@ -1,8 +1,13 @@
-// ===== WEEKLY MENU LOGIC =====
+// ===== MENU SECTION LOGIC WITH PERSONAL MENUS =====
 
-// Ініціалізація змінної
-if (typeof window.weeklyMenu === 'undefined') {
-    window.weeklyMenu = {
+// Структура для зберігання меню всіх користувачів
+if (typeof window.weeklyMenuState === 'undefined') {
+    window.weeklyMenuState = {};
+}
+
+// Ініціалізація порожнього меню
+function getEmptyWeekMenu() {
+    return {
         'Понеділок': {},
         'Вівторок': {},
         'Середа': {},
@@ -13,335 +18,277 @@ if (typeof window.weeklyMenu === 'undefined') {
     };
 }
 
-const mealIcons = {
-    'Сніданок': '🌅',
-    'Обід': '☀️',
-    'Вечеря': '🌙',
-    'Перекус': '🍎'
-};
-
-const predefinedDishes = {
-    'Сніданки': [
-        'Вівсянка з фруктами і горіхами',
-        'Вівсянка з яблуками та медом',
-        'Сирники зі сметаною або медом',
-        'Млинці з медом, варенням, сиром, овочами, мясом',
-        'Пластівці з молоком або йогуртом',
-        'Фруктовий салат (яблуко + банан + груша + горіхи)',
-        'Яєчня з овочами',
-        'Яйця варені з тостами',
-        'Омлет із зеленню, сиром, овочами'
-    ],
-    'Перші страви': [
-        'Борщ (класичний або вегетаріанський)',
-        'Курячий бульйон із локшиною',
-        'Овочевий суп',
-        'Гречаний суп',
-        'Рисовий суп із куркою',
-        'Пшоняний суп із морквою та цибулею'
-    ],
-    'Мясні страви': [
-        'Гречка з відбивною',
-        'Курячі котлети з гречкою або рисом',
-        'Макарони з індичкою',
-        'Макарони з сосисками',
-        'Пшоняна каша з тушкованою свининою',
-        'Булгур із куркою або індичкою',
-        'Відварна картопля з котлетами',
-        'Відбивна зі свинини або курки',
-        'Пельмені зі сметаною або вершковим соусом'
-    ],
-    'Рибні страви': [
-        'Печена картопля зі скумбрією',
-        'Оселедець з відварною картоплею',
-        'Рис із хеком або лососем на пару',
-        'Макарони з тунцем',
-        'Лосось на пару або запечений із овочами',
-        'Скумбрія запечена з лимоном і зеленню'
-    ],
-    'Вегетаріанські страви': [
-        'Вареники з картоплею, сиром, капустою',
-        'Борщ без мяса',
-        'Булгур або рис з овочами',
-        'Млинці з овочами або сиром',
-        'Сирники з медом',
-        'Овочевий салат з яйцем',
-        'Фруктовий салат з горіхами',
-        'Картопля печена з зеленню',
-        'Овочеве рагу'
-    ],
-    'Гарніри': [
-        'Гречка',
-        'Рис',
-        'Булгур',
-        'Пшоно',
-        'Картопля печена',
-        'Картопля варена',
-        'Картопляне пюре',
-        'Макарони',
-        'Овочі тушковані',
-        'Овочі на пару',
-        'Овочі запечені'
-    ],
-    'Десерти / Перекуси': [
-        'Млинці з варенням або шоколадом',
-        'Сирники з медом',
-        'Яблука',
-        'Груші',
-        'Банани',
-        'Горіхи',
-        'Сухофрукти',
-        'Йогурт із пластівцями'
-    ]
-};
+// Отримати меню поточного користувача
+function getUserMenu() {
+    const currentUser = window.currentUser ? window.currentUser() : null;
+    if (!currentUser) return getEmptyWeekMenu();
+    
+    const username = currentUser.username;
+    if (!window.weeklyMenuState[username]) {
+        window.weeklyMenuState[username] = getEmptyWeekMenu();
+    }
+    
+    return window.weeklyMenuState[username];
+}
 
 // Створення HTML структури секції
 window.createMenuSection = function() {
     const section = document.getElementById('menu-section');
     
-    const categoryIcons = {
-        'Сніданки': '🌅',
-        'Перші страви': '🍲',
-        'Мясні страви': '🍖',
-        'Рибні страви': '🐟',
-        'Вегетаріанські страви': '🌿',
-        'Гарніри': '🧂',
-        'Десерти / Перекуски': '🍰'
-    };
+    const currentUser = window.currentUser ? window.currentUser() : null;
+    if (!currentUser) {
+        section.innerHTML = `
+            <div class="container">
+                <div class="header">
+                    <h1>🍽️ Меню на тиждень</h1>
+                    <p>Користувач не визначений</p>
+                </div>
+            </div>
+        `;
+        return;
+    }
     
-    const categoryOptions = Object.keys(predefinedDishes).map(category => 
-        `<option value="${category}">${categoryIcons[category]} ${category}</option>`
-    ).join('');
+    const roleInfo = window.getTodayRoleInfo ? window.getTodayRoleInfo(currentUser.username) : {};
+    const isDev = roleInfo.role === 'Dev';
     
     section.innerHTML = `
         <div class="container">
             <div class="header">
                 <h1>🍽️ Меню на тиждень</h1>
-                <p>Плануйте свої страви на кожен день</p>
+                <p>Профіль: <strong>${currentUser.avatar} ${currentUser.name}</strong></p>
+                ${isDev ? `
+                    <p style="color: #4CAF50; font-size: 0.9em; margin-top: 10px;">💾 Всі зміни автоматично зберігаються в базу</p>
+                    <p style="color: #d0d0d0; font-size: 0.85em; margin-top: 5px; opacity: 0.8;">Це ваше персональне меню - тільки ви його бачите</p>
+                ` : `
+                    <p style="color: #ff6b6b; font-size: 0.9em; margin-top: 10px;">🔒 Редагування доступне тільки для Dev</p>
+                    <p style="color: #d0d0d0; font-size: 0.85em; margin-top: 5px; opacity: 0.8;">Перегляд загального меню</p>
+                `}
             </div>
             
             <div class="content">
-                <div class="add-menu-section">
-                    <h2>➕ Додати страву</h2>
-                    <div class="add-menu-form">
-                        <select id="menuDaySelect" title="День тижня">
-                            <option value="Понеділок">Понеділок</option>
-                            <option value="Вівторок">Вівторок</option>
-                            <option value="Середа">Середа</option>
-                            <option value="Четвер">Четвер</option>
-                            <option value="П'ятниця">П'ятниця</option>
-                            <option value="Субота">Субота</option>
-                            <option value="Неділя">Неділя</option>
-                        </select>
-                        <select id="menuMealSelect" title="Прийом їжі">
-                            <option value="Сніданок">🌅 Сніданок</option>
-                            <option value="Обід">☀️ Обід</option>
-                            <option value="Вечеря">🌙 Вечеря</option>
-                            <option value="Перекус">🍎 Перекус</option>
-                        </select>
-                        <select id="menuCategorySelect" title="Категорія страви">
-                            ${categoryOptions}
-                        </select>
-                        <select id="menuDishSelect" title="Назва страви">
-                            <!-- Заповнюється динамічно -->
-                        </select>
-                        <input type="text" id="customDishInput" placeholder="Введіть свою страву..." style="display: none;">
-                        <button onclick="window.addMeal()">Додати</button>
+                ${isDev ? `
+                    <div class="add-menu-section">
+                        <h2>➕ Додати страву</h2>
+                        <form class="add-menu-form" onsubmit="window.addMenuItem(event)">
+                            <select id="menuDay" required>
+                                <option value="">Оберіть день</option>
+                                <option value="Понеділок">Понеділок</option>
+                                <option value="Вівторок">Вівторок</option>
+                                <option value="Середа">Середа</option>
+                                <option value="Четвер">Четвер</option>
+                                <option value="П'ятниця">П'ятниця</option>
+                                <option value="Субота">Субота</option>
+                                <option value="Неділя">Неділя</option>
+                            </select>
+                            <select id="menuMeal" required>
+                                <option value="">Оберіть прийом їжі</option>
+                                <option value="🌅 Сніданок">🌅 Сніданок</option>
+                                <option value="🌞 Обід">🌞 Обід</option>
+                                <option value="🌙 Вечеря">🌙 Вечеря</option>
+                            </select>
+                            <input type="text" id="menuDish" placeholder="Назва страви" required>
+                            <button type="submit">➕ Додати</button>
+                        </form>
                     </div>
-                </div>
-
-                <div id="menuWeekList" class="tasks-grid">
-                    <div class="empty-state">
-                        <svg viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M8.1,13.34L5.64,11.59L4.16,13.35L8.1,16.64L16.84,9.23L15.36,7.47L8.1,13.34M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22A10,10 0 0,1 2,12A10,10 0 0,1 12,2M12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20A8,8 0 0,0 20,12A8,8 0 0,0 12,4Z"/>
-                        </svg>
-                        <p>Додайте страви до вашого тижневого меню</p>
-                    </div>
-                </div>
-
-                <div class="action-buttons">
-                    <button class="save-btn" onclick="window.saveMenuToFirebase()">
-                        <span>☁️</span>
-                        <span>Зберегти в хмару</span>
-                    </button>
-                    <button class="load-btn" onclick="window.loadMenuFromFirebase()">
-                        <span>☁️</span>
-                        <span>Завантажити з хмари</span>
-                    </button>
-                    <button class="clear-btn" onclick="window.clearWeek()">
-                        <span>✕</span>
-                        <span>Очистити меню</span>
-                    </button>
-                </div>
+                ` : ''}
+                
+                <div class="days-grid" id="menuGrid"></div>
             </div>
         </div>
     `;
-    
-    // Ініціалізація
-    const categorySelect = document.getElementById('menuCategorySelect');
-    if (categorySelect) {
-        categorySelect.addEventListener('change', window.updateDishSelect);
-        window.updateDishSelect();
-    }
-    
-    const dishSelect = document.getElementById('menuDishSelect');
-    if (dishSelect) {
-        dishSelect.addEventListener('change', window.toggleCustomDish);
-    }
-    
-    const customDishInput = document.getElementById('customDishInput');
-    if (customDishInput) {
-        customDishInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                window.addMeal();
-            }
-        });
-    }
 };
 
-window.updateDishSelect = function() {
-    const categorySelect = document.getElementById('menuCategorySelect');
-    const dishSelect = document.getElementById('menuDishSelect');
-    const customDishInput = document.getElementById('customDishInput');
+// Додати страву до меню
+window.addMenuItem = function(event) {
+    event.preventDefault();
     
-    const category = categorySelect.value;
-    const dishes = predefinedDishes[category] || [];
-    
-    dishSelect.innerHTML = dishes.map(dish => 
-        `<option value="${dish}">${dish}</option>`
-    ).join('') + '<option value="custom">✏️ Своя страва...</option>';
-    
-    customDishInput.style.display = 'none';
-};
-
-window.toggleCustomDish = function() {
-    const dishSelect = document.getElementById('menuDishSelect');
-    const customDishInput = document.getElementById('customDishInput');
-    
-    if (dishSelect.value === 'custom') {
-        customDishInput.style.display = 'block';
-        customDishInput.focus();
-    } else {
-        customDishInput.style.display = 'none';
+    const currentUser = window.currentUser ? window.currentUser() : null;
+    if (!currentUser) {
+        alert('❌ Користувач не визначений!');
+        return;
     }
-};
-
-window.addMeal = function() {
-    const daySelect = document.getElementById('menuDaySelect');
-    const mealSelect = document.getElementById('menuMealSelect');
-    const dishSelect = document.getElementById('menuDishSelect');
-    const customDishInput = document.getElementById('customDishInput');
     
-    const day = daySelect.value;
-    const mealType = mealSelect.value;
-    
-    let dishName = '';
-    if (dishSelect.value === 'custom') {
-        dishName = customDishInput.value.trim();
-    } else {
-        dishName = dishSelect.value;
+    const roleInfo = window.getTodayRoleInfo ? window.getTodayRoleInfo(currentUser.username) : {};
+    if (roleInfo.role !== 'Dev') {
+        alert('❌ Тільки Dev може редагувати меню!');
+        return;
     }
+    
+    const day = document.getElementById('menuDay').value;
+    const meal = document.getElementById('menuMeal').value;
+    const dish = document.getElementById('menuDish').value.trim();
 
-    if (!dishName) {
-        alert('Будь ласка, оберіть або введіть назву страви!');
+    if (!day || !meal || !dish) {
+        alert('Будь ласка, заповніть всі поля!');
         return;
     }
 
-    if (!window.weeklyMenu[day][mealType]) {
-        window.weeklyMenu[day][mealType] = [];
+    const username = currentUser.username;
+    if (!window.weeklyMenuState[username]) {
+        window.weeklyMenuState[username] = getEmptyWeekMenu();
     }
 
-    window.weeklyMenu[day][mealType].push({
-        id: Date.now(),
-        name: dishName
-    });
+    if (!window.weeklyMenuState[username][day]) {
+        window.weeklyMenuState[username][day] = {};
+    }
 
-    customDishInput.value = '';
-    customDishInput.style.display = 'none';
+    window.weeklyMenuState[username][day][meal] = dish;
+
+    // Очищаємо форму
+    document.getElementById('menuDay').value = '';
+    document.getElementById('menuMeal').value = '';
+    document.getElementById('menuDish').value = '';
+
     window.renderMenu();
-    if (typeof window.autoSaveToCache === 'function') window.autoSaveToCache();
-};
-
-window.deleteMeal = function(day, mealType, mealId) {
-    window.weeklyMenu[day][mealType] = window.weeklyMenu[day][mealType].filter(m => m.id !== mealId);
     
-    if (window.weeklyMenu[day][mealType].length === 0) {
-        delete window.weeklyMenu[day][mealType];
+    console.log(`✅ Додано страву для ${username}:`, { day, meal, dish });
+    
+    // Автоматичне збереження в Firebase
+    if (typeof window.autoSaveMenu === 'function') {
+        window.autoSaveMenu();
     }
     
-    window.renderMenu();
-    if (typeof window.autoSaveToCache === 'function') window.autoSaveToCache();
-};
-
-window.clearWeek = function() {
-    if (confirm('Ви впевнені, що хочете очистити все меню на тиждень?')) {
-        window.weeklyMenu = {
-            'Понеділок': {},
-            'Вівторок': {},
-            'Середа': {},
-            'Четвер': {},
-            "П'ятниця": {},
-            'Субота': {},
-            'Неділя': {}
-        };
-        window.renderMenu();
-        if (typeof window.autoSaveToCache === 'function') window.autoSaveToCache();
-        alert('Меню очищено!');
+    // Додатково зберігаємо в локальний кеш
+    if (typeof window.autoSaveToCache === 'function') {
+        window.autoSaveToCache();
     }
 };
 
-window.renderMenu = function() {
-    const container = document.getElementById('menuWeekList');
-    
-    if (!container) return;
-    
-    const days = Object.keys(window.weeklyMenu);
-    
-    const hasAnyMeals = days.some(day => Object.keys(window.weeklyMenu[day]).length > 0);
-    
-    if (!hasAnyMeals) {
-        container.innerHTML = `
-            <div class="empty-state">
-                <svg viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M8.1,13.34L5.64,11.59L4.16,13.35L8.1,16.64L16.84,9.23L15.36,7.47L8.1,13.34M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22A10,10 0 0,1 2,12A10,10 0 0,1 12,2M12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20A8,8 0 0,0 20,12A8,8 0 0,0 12,4Z"/>
-                </svg>
-                <p>Додайте страви до вашого тижневого меню</p>
-            </div>
-        `;
+// Видалити страву з меню
+window.deleteMenuItem = function(day, meal) {
+    const currentUser = window.currentUser ? window.currentUser() : null;
+    if (!currentUser) {
+        alert('❌ Користувач не визначений!');
         return;
     }
-
-    container.innerHTML = days.map(day => {
-        const dayMeals = window.weeklyMenu[day];
-        const mealTypes = Object.keys(dayMeals);
+    
+    const roleInfo = window.getTodayRoleInfo ? window.getTodayRoleInfo(currentUser.username) : {};
+    if (roleInfo.role !== 'Dev') {
+        alert('❌ Тільки Dev може редагувати меню!');
+        return;
+    }
+    
+    const username = currentUser.username;
+    if (!window.weeklyMenuState[username]) return;
+    
+    if (window.weeklyMenuState[username][day] && window.weeklyMenuState[username][day][meal]) {
+        const deletedDish = window.weeklyMenuState[username][day][meal];
+        delete window.weeklyMenuState[username][day][meal];
         
-        const mealsHtml = mealTypes.length > 0 ? mealTypes.map(mealType => {
-            const meals = dayMeals[mealType];
-            const mealsListHtml = meals.map(meal => `
-                <div class="meal-item">
-                    <span class="meal-name">${meal.name}</span>
-                    <button class="delete-meal-btn" onclick="window.deleteMeal('${day}', '${mealType}', ${meal.id})">✕</button>
-                </div>
-            `).join('');
+        window.renderMenu();
+        
+        console.log(`🗑️ Видалено страву для ${username}:`, { day, meal, dish: deletedDish });
+        
+        // Автоматичне збереження в Firebase
+        if (typeof window.autoSaveMenu === 'function') {
+            window.autoSaveMenu();
+        }
+        
+        // Додатково зберігаємо в локальний кеш
+        if (typeof window.autoSaveToCache === 'function') {
+            window.autoSaveToCache();
+        }
+    }
+};
 
-            return `
-                <div class="meal-group">
-                    <div class="meal-title">
-                        <span>${mealIcons[mealType]}</span>
-                        <span>${mealType}</span>
-                    </div>
-                    ${mealsListHtml}
-                </div>
-            `;
-        }).join('') : '<div class="empty-day">Страв ще не додано</div>';
+// Групування страв по типу (сніданок, обід, вечеря)
+function groupMealsByType(dayMeals) {
+    const grouped = {};
+    for (const [mealType, dish] of Object.entries(dayMeals)) {
+        if (!grouped[mealType]) {
+            grouped[mealType] = [];
+        }
+        grouped[mealType].push(dish);
+    }
+    return grouped;
+}
+
+// Рендер меню на тиждень
+window.renderMenu = function() {
+    const grid = document.getElementById('menuGrid');
+    if (!grid) return;
+    
+    const currentUser = window.currentUser ? window.currentUser() : null;
+    if (!currentUser) {
+        grid.innerHTML = '<div class="empty-day">Користувач не визначений</div>';
+        return;
+    }
+    
+    const menu = getUserMenu();
+    const roleInfo = window.getTodayRoleInfo ? window.getTodayRoleInfo(currentUser.username) : {};
+    const isDev = roleInfo.role === 'Dev';
+
+    const days = ['Понеділок', 'Вівторок', 'Середа', 'Четвер', "П'ятниця", 'Субота', 'Неділя'];
+    const dayEmojis = {
+        'Понеділок': '🌙',
+        'Вівторок': '🔥',
+        'Середа': '⭐',
+        'Четвер': '⚡',
+        "П'ятниця": '🎉',
+        'Субота': '🌈',
+        'Неділя': '☀️'
+    };
+
+    grid.innerHTML = days.map(day => {
+        const dayMeals = menu[day] || {};
+        const meals = Object.entries(dayMeals);
 
         return `
             <div class="day-card">
                 <div class="day-header">
-                    <div class="day-title">${day}</div>
+                    <div class="day-title">${dayEmojis[day]} ${day}</div>
                 </div>
-                ${mealsHtml}
+                
+                ${meals.length > 0 ? `
+                    ${Object.entries(groupMealsByType(dayMeals)).map(([mealType, dishes]) => `
+                        <div class="meal-group">
+                            <div class="meal-title">${mealType}</div>
+                            ${dishes.map(dish => `
+                                <div class="meal-item">
+                                    <span class="meal-name">${dish}</span>
+                                    ${isDev ? `<button class="delete-meal-btn" onclick="window.deleteMenuItem('${day}', '${mealType}')">✕</button>` : ''}
+                                </div>
+                            `).join('')}
+                        </div>
+                    `).join('')}
+                ` : `
+                    <div class="empty-day">
+                        ${isDev ? 'Додайте страви для цього дня' : 'Меню не заповнене'}
+                    </div>
+                `}
             </div>
         `;
     }).join('');
+    
+    console.log(`📋 Відображено меню для ${currentUser.username}`);
 };
+
+// Експорт для Firebase (повертає меню ТІЛЬКИ поточного користувача)
+window.getMenuForSave = function() {
+    const currentUser = window.currentUser ? window.currentUser() : null;
+    if (!currentUser) return getEmptyWeekMenu();
+    
+    const username = currentUser.username;
+    return window.weeklyMenuState[username] || getEmptyWeekMenu();
+};
+
+// Завантаження меню з Firebase (для поточного користувача)
+window.loadMenuFromSave = function(username, data) {
+    if (!username || !data) return;
+    
+    if (!window.weeklyMenuState) {
+        window.weeklyMenuState = {};
+    }
+    
+    window.weeklyMenuState[username] = data;
+    
+    // Рендеримо тільки якщо це поточний користувач
+    const currentUser = window.currentUser ? window.currentUser() : null;
+    if (currentUser && currentUser.username === username) {
+        window.renderMenu();
+    }
+    
+    console.log(`✅ Меню завантажено для ${username}:`, data);
+};
+
+console.log('✅ Menu system завантажено (персоналізована версія з автозбереженням, Dev only)');
