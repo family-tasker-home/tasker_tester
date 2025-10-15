@@ -235,13 +235,13 @@ window.autoSaveSupplies = async function() {
             return;
         }
         
-        const suppliesRef = window.database.ref('shared/supplies');
+        const suppliesRef = window.database.ref('allData/supplies');
         await suppliesRef.set(hasData ? sanitizedSupplies : null);
         
-        const updateRef = window.database.ref('shared/lastSuppliesUpdate');
+        const updateRef = window.database.ref('allData/lastUpdated');
         await updateRef.set(new Date().toISOString());
         
-        const userRef = window.database.ref('shared/lastSuppliesUpdateBy');
+        const userRef = window.database.ref('allData/lastUpdatedBy');
         await userRef.set(currentUserObj.name);
         
         console.log('💾 Запаси автоматично збережено у Firebase');
@@ -276,13 +276,13 @@ window.autoSaveShoppingList = async function() {
             return;
         }
         
-        const shoppingRef = window.database.ref('shared/shopping');
+        const shoppingRef = window.database.ref('allData/shoppingList');
         await shoppingRef.set(hasData ? shopping : null);
         
-        const updateRef = window.database.ref('shared/lastShoppingUpdate');
+        const updateRef = window.database.ref('allData/lastUpdated');
         await updateRef.set(new Date().toISOString());
         
-        const userRef = window.database.ref('shared/lastShoppingUpdateBy');
+        const userRef = window.database.ref('allData/lastUpdatedBy');
         await userRef.set(currentUserObj.name);
         
         console.log('💾 Список покупок автоматично збережено у Firebase');
@@ -408,7 +408,7 @@ window.autoLoadSuppliesOnLogin = async function() {
             return;
         }
         
-        const ref = window.database.ref('shared/supplies');
+        const ref = window.database.ref('allData/supplies');
         const snapshot = await ref.once('value');
         
         if (snapshot.exists()) {
@@ -437,7 +437,7 @@ window.autoLoadShoppingListOnLogin = async function() {
             return;
         }
         
-        const ref = window.database.ref('shared/shopping');
+        const ref = window.database.ref('allData/shoppingList');
         const snapshot = await ref.once('value');
         
         if (snapshot.exists()) {
@@ -482,4 +482,4 @@ window.autoLoadSharedDataOnLogin = async function() {
     }
 };
 
-console.log('✅ Firebase config завантажено (персоналізована версія з автозбереженням та спільними даними)');
+console.log('✅ Firebase config завантажено (оновлена версія з повною синхронізацією)');
