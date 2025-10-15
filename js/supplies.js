@@ -55,14 +55,29 @@ const suppliesCategories = {
     }
 };
 
+// Перевірка прав на редагування запасів
+function canEditSupplies() {
+    const currentUser = window.currentUser ? window.currentUser() : null;
+    if (!currentUser) return false;
+    
+    const role = window.getCurrentRole ? window.getCurrentRole(currentUser.username) : null;
+    const editRoles = ['Dev', 'Кухня', 'Кладовка', 'Ванна'];
+    return editRoles.includes(role);
+}
+
 // Створення HTML структури секції
 window.createSuppliesSection = function() {
     const section = document.getElementById('supplies-section');
+    
+    const currentUser = window.currentUser ? window.currentUser() : null;
+    const canEdit = canEditSupplies();
+    
     section.innerHTML = `
         <div class="container">
             <div class="header">
                 <h1>📦 Запаси</h1>
                 <p>Відстежуйте наявність продуктів вдома</p>
+                ${!canEdit ? '<p style="color: #ff6b6b; font-size: 0.9em; margin-top: 10px;">🔒 Перегляд доступен, редагування обмежено</p>' : ''}
             </div>
             
             <div class="content">
@@ -86,17 +101,13 @@ window.createSuppliesSection = function() {
                 </div>
 
                 <div class="action-buttons">
-                    <button class="download-btn" onclick="window.addToShoppingList()">
+                    <button class="action-btn action-btn-primary" onclick="window.addToShoppingList()" ${!canEdit ? 'disabled title="Редагування недоступне"' : ''}>
                         <span>🛒</span>
                         <span>Додати в список покупок</span>
                     </button>
-                    <button class="save-btn" onclick="window.saveSuppliestoFirebase()">
-                        <span>☁️</span>
-                        <span>Зберегти в хмару</span>
-                    </button>
-                    <button class="load-btn" onclick="window.loadSuppliesFromFirebase()">
-                        <span>☁️</span>
-                        <span>Завантажити з хмари</span>
+                    <button class="action-btn action-btn-secondary" onclick="window.clearChecked()" ${!canEdit ? 'disabled title="Редагування недоступне"' : ''}>
+                        <span>✓</span>
+                        <span>Очистити купленне</span>
                     </button>
                 </div>
             </div>
@@ -122,6 +133,11 @@ window.initializeSupplies = function() {
 };
 
 window.setSupplyStatus = function(categoryKey, item, status) {
+    if (!canEditSupplies()) {
+        alert('❌ У вас немає прав редагування запасів!');
+        return;
+    }
+    
     // Перевірка існування категорії
     if (!window.suppliesStatus[categoryKey]) {
         window.suppliesStatus[categoryKey] = {};
@@ -138,13 +154,24 @@ window.setSupplyStatus = function(categoryKey, item, status) {
         window.suppliesStatus[categoryKey][item] = status;
     }
     window.renderSupplies();
-    if (typeof window.autoSaveToCache === 'function') window.autoSaveToCache();
+    
+    // Автозбереження в Firebase
+    if (typeof window.autoSaveSupplies === 'function') {
+        window.autoSaveSupplies();
+    }
+    
+    if (typeof window.autoSaveToCache === 'function') {
+        window.autoSaveToCache();
+    }
 };
 
 window.renderSupplies = function() {
     const container = document.getElementById('suppliesList');
     
     if (!container) return;
+    
+    const currentUser = window.currentUser ? window.currentUser() : null;
+    const canEdit = canEditSupplies();
     
     container.innerHTML = Object.keys(suppliesCategories).map(categoryKey => {
         const category = suppliesCategories[categoryKey];
@@ -171,9 +198,18 @@ window.renderSupplies = function() {
                 <div class="supply-item">
                     <span class="supply-name">${item}</span>
                     <div class="supply-status-buttons">
-                        <button class="supply-status-btn ${status === 'available' ? 'active' : ''}" onclick="window.setSupplyStatus('${categoryKey}', '${escapedItem}', 'available')" title="Є вдома">🟢</button>
-                        <button class="supply-status-btn ${status === 'low' ? 'active' : ''}" onclick="window.setSupplyStatus('${categoryKey}', '${escapedItem}', 'low')" title="Мало залишилось">🟡</button>
-                        <button class="supply-status-btn ${status === 'needed' ? 'active' : ''}" onclick="window.setSupplyStatus('${categoryKey}', '${escapedItem}', 'needed')" title="Потрібно купити">🔴</button>
+                        <button class="supply-status-btn ${status === 'available' ? 'active' : ''}" 
+                                onclick="window.setSupplyStatus('${categoryKey}', '${escapedItem}', 'available')" 
+                                title="Є вдома"
+                                ${!canEdit ? 'disabled' : ''}>🟢</button>
+                        <button class="supply-status-btn ${status === 'low' ? 'active' : ''}" 
+                                onclick="window.setSupplyStatus('${categoryKey}', '${escapedItem}', 'low')" 
+                                title="Мало залишилось"
+                                ${!canEdit ? 'disabled' : ''}>🟡</button>
+                        <button class="supply-status-btn ${status === 'needed' ? 'active' : ''}" 
+                                onclick="window.setSupplyStatus('${categoryKey}', '${escapedItem}', 'needed')" 
+                                title="Потрібно купити"
+                                ${!canEdit ? 'disabled' : ''}>🔴</button>
                     </div>
                 </div>
             `;
@@ -189,6 +225,11 @@ window.renderSupplies = function() {
 };
 
 window.addToShoppingList = function() {
+    if (!canEditSupplies()) {
+        alert('❌ У вас немає прав редагування запасів!');
+        return;
+    }
+    
     let itemsToAdd = [];
     
     Object.keys(window.suppliesStatus).forEach(categoryKey => {
@@ -243,6 +284,7 @@ window.addToShoppingList = function() {
         });
         
         if (typeof window.renderList === 'function') window.renderList();
+        if (typeof window.autoSaveShoppingList === 'function') window.autoSaveShoppingList();
         if (typeof window.autoSaveToCache === 'function') window.autoSaveToCache();
         
         alert(`Додано ${itemsToAdd.length} товарів до списку покупок!`);
@@ -250,3 +292,32 @@ window.addToShoppingList = function() {
         alert('Помилка: список покупок не завантажено!');
     }
 };
+
+window.clearChecked = function() {
+    if (!canEditSupplies()) {
+        alert('❌ У вас немає прав редагування запасів!');
+        return;
+    }
+    
+    let clearedCount = 0;
+    for (const category in window.shoppingList) {
+        const before = window.shoppingList[category].length;
+        window.shoppingList[category] = window.shoppingList[category].filter(item => !item.checked);
+        clearedCount += before - window.shoppingList[category].length;
+        
+        if (window.shoppingList[category].length === 0) {
+            delete window.shoppingList[category];
+        }
+    }
+    
+    if (clearedCount > 0) {
+        alert(`Видалено ${clearedCount} куплених товарів`);
+        window.renderList();
+        if (typeof window.autoSaveShoppingList === 'function') window.autoSaveShoppingList();
+        if (typeof window.autoSaveToCache === 'function') window.autoSaveToCache();
+    } else {
+        alert('Немає відмічених товарів для видалення');
+    }
+};
+
+console.log('✅ Supplies system завантажено (з правами доступу та авто-збереженням)');
