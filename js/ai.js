@@ -1,9 +1,46 @@
-// AI Assistant - Джарвіс (Gemini API)
+// AI Assistant - Джарвіс (Gemini API через Vercel)
 // Кухонний асистент і домашній управитель з доступом до бази даних
 
 let currentApiKeyIndex = 0;
 let chatHistory = [];
 let conversationContext = null;
+let JARVIS_PROMPT = null;
+
+// Завантаження промпту для поточного користувача
+async function loadUserPrompt() {
+    try {
+        const currentUser = window.currentUser ? window.currentUser() : null;
+        if (!currentUser) {
+            console.error('❌ Користувач не авторизований');
+            return false;
+        }
+
+        const username = currentUser.username || 'Анонім';
+        
+        // Завантажуємо промпт з API
+        const response = await fetch(`/api/prompts?username=${encodeURIComponent(username)}`);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        JARVIS_PROMPT = data.prompt;
+        
+        console.log('✅ Промпт завантажено для користувача:', username);
+        return true;
+    } catch (error) {
+        console.error('❌ Помилка завантаження промпту:', error);
+        
+        // Fallback промпт
+        JARVIS_PROMPT = `Ти - Джарвіс, AI-асистент системи Halloween Planner.
+        
+Допомагай користувачам з організацією меню, покупок, завдань та розкладу.
+Будь ввічливим, корисним та конкретним у відповідях.`;
+        
+        return false;
+    }
+}
 
 // Отримання поточних даних з сайту
 function getCurrentSiteData() {
@@ -82,16 +119,15 @@ function formatTasks(tasks) {
     }));
 }
 
-// Відправка повідомлення до Gemini AI
+// Відправка повідомлення до Gemini AI через Vercel
 async function sendMessageToAI(message) {
-    if (typeof API_CONFIGS === 'undefined' || !API_CONFIGS || API_CONFIGS.length === 0) {
-        showError('❌ Помилка: API ключі не налаштовані.\n\nПеревірте файл js/config.js');
-        return;
-    }
-
-    if (typeof JARVIS_PROMPT === 'undefined') {
-        showError('❌ Помилка: Промпт Джарвіса не знайдено.\n\nПеревірте файл js/config.js');
-        return;
+    // Перевірка промпту
+    if (!JARVIS_PROMPT) {
+        await loadUserPrompt();
+        if (!JARVIS_PROMPT) {
+            showError('❌ Помилка: Не вдалося завантажити конфігурацію асистента.');
+            return;
+        }
     }
 
     const chatContainer = document.getElementById('chatMessages');
@@ -104,13 +140,21 @@ async function sendMessageToAI(message) {
 
     try {
         const contents = buildConversationHistory(message);
-        const currentConfig = API_CONFIGS[currentApiKeyIndex];
         
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${currentConfig.model}:generateContent?key=${currentConfig.key}`, {
+        // Визначаємо endpoint
+        const endpoint = typeof API_ENDPOINT !== 'undefined' && API_ENDPOINT 
+            ? API_ENDPOINT 
+            : '/api/gemini';
+        
+        // Відправляємо запит через Vercel API
+        const response = await fetch(endpoint, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+                'Content-Type': 'application/json'
+            },
             body: JSON.stringify({
                 contents: contents,
+                apiKeyIndex: currentApiKeyIndex,
                 generationConfig: {
                     temperature: 0.9,
                     topK: 40,
@@ -120,10 +164,21 @@ async function sendMessageToAI(message) {
             })
         });
 
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+        }
 
         const data = await response.json();
-        if (!data.candidates?.[0]?.content) throw new Error('Некоректна відповідь від Gemini API');
+        
+        if (!data.candidates?.[0]?.content) {
+            throw new Error('Некоректна відповідь від Gemini API');
+        }
+        
+        // Оновлюємо індекс API якщо прийшов з сервера
+        if (data.usedApiIndex !== undefined) {
+            currentApiKeyIndex = data.usedApiIndex;
+        }
         
         let aiResponse = data.candidates[0].content.parts[0].text;
         aiResponse = cleanMarkdown(aiResponse);
@@ -133,7 +188,7 @@ async function sendMessageToAI(message) {
         if (commandsExecuted.length > 0) {
             console.log('✅ Виконано команд:', commandsExecuted.length);
             
-            // Видаляємо ВСІХ команд з відповіді (роблять їх невидимими)
+            // Видаляємо ВСІХ команд з відповіді
             commandsExecuted.forEach(cmd => {
                 aiResponse = aiResponse.replace(cmd.original, '');
             });
@@ -143,13 +198,11 @@ async function sendMessageToAI(message) {
             const viewCommands = commandsExecuted.filter(cmd => cmd.type.startsWith('ПЕРЕГЛЯНУТИ_'));
             
             if (viewCommands.length > 0) {
-                // Додаємо відповідь асистента (БЕЗ команд)
                 chatHistory.push({ role: 'user', content: message });
                 if (aiResponse) {
                     chatHistory.push({ role: 'assistant', content: aiResponse });
                 }
                 
-                // Формуємо повідомлення зі свіжими даними
                 let freshDataMessage = '📊 Оновлені дані:\n\n';
                 for (const cmd of viewCommands) {
                     freshDataMessage += cmd.data + '\n\n';
@@ -157,7 +210,6 @@ async function sendMessageToAI(message) {
                 
                 chatHistory.push({ role: 'user', content: freshDataMessage });
                 
-                // Відображаємо проміжну відповідь (БЕЗ команд)
                 chatContainer.removeChild(loadingMessage);
                 if (aiResponse) {
                     chatContainer.appendChild(createMessageElement(aiResponse, 'assistant'));
@@ -165,19 +217,18 @@ async function sendMessageToAI(message) {
                 chatContainer.appendChild(createMessageElement(freshDataMessage, 'user'));
                 chatContainer.scrollTop = chatContainer.scrollHeight;
                 
-                // Додаємо новий індикатор завантаження
                 const newLoadingMessage = createMessageElement('Джарвіс аналізує оновлені дані...', 'assistant', true);
                 chatContainer.appendChild(newLoadingMessage);
                 chatContainer.scrollTop = chatContainer.scrollHeight;
                 
-                // Робимо повторний запит
                 const followUpContents = buildConversationHistory('Проаналізуй ці дані та дай відповідь на моє питання');
                 
-                const followUpResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${currentConfig.model}:generateContent?key=${currentConfig.key}`, {
+                const followUpResponse = await fetch(endpoint, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         contents: followUpContents,
+                        apiKeyIndex: currentApiKeyIndex,
                         generationConfig: {
                             temperature: 0.9,
                             topK: 40,
@@ -206,14 +257,12 @@ async function sendMessageToAI(message) {
                 return;
             }
             
-            // АВТОМАТИЧНЕ ЗБЕРЕЖЕННЯ В FIREBASE БЕЗ PROMPT (для команд модифікації)
+            // АВТОМАТИЧНЕ ЗБЕРЕЖЕННЯ В FIREBASE БЕЗ PROMPT
             const modifyCommands = commandsExecuted.filter(cmd => !cmd.type.startsWith('ПЕРЕГЛЯНУТИ_'));
             if (modifyCommands.length > 0) {
                 setTimeout(async () => {
                     console.log('💾 Автоматичне збереження в Firebase...');
                     await autoSaveToFirebaseNoPrompt();
-                    
-                    // Оновлюємо контекст після збереження
                     conversationContext = getCurrentSiteData();
                 }, 800);
             }
@@ -223,7 +272,6 @@ async function sendMessageToAI(message) {
         chatContainer.appendChild(createMessageElement(aiResponse, 'assistant'));
         chatContainer.scrollTop = chatContainer.scrollHeight;
 
-        // Зберігаємо в історію
         chatHistory.push({ role: 'user', content: message });
         chatHistory.push({ role: 'assistant', content: aiResponse });
         if (chatHistory.length > 20) chatHistory = chatHistory.slice(-20);
@@ -234,8 +282,9 @@ async function sendMessageToAI(message) {
         console.error('Error:', error);
         if (chatContainer.contains(loadingMessage)) chatContainer.removeChild(loadingMessage);
         
-        if (API_CONFIGS.length > 1) {
-            currentApiKeyIndex = (currentApiKeyIndex + 1) % API_CONFIGS.length;
+        // Якщо є кілька API, пробуємо наступний
+        if (typeof data !== 'undefined' && data.totalApis && data.totalApis > 1) {
+            currentApiKeyIndex = (currentApiKeyIndex + 1) % data.totalApis;
         }
         
         showError(getErrorMessage(error));
@@ -245,7 +294,6 @@ async function sendMessageToAI(message) {
 // Автоматичне збереження в Firebase БЕЗ PROMPT
 async function autoSaveToFirebaseNoPrompt() {
     try {
-        // Перевірка аутентифікації
         if (typeof window.auth === 'undefined' || !window.auth.currentUser) {
             console.log('⚠️ Користувач не авторизований, збереження пропущено');
             return;
@@ -254,7 +302,6 @@ async function autoSaveToFirebaseNoPrompt() {
         const user = window.auth.currentUser;
         const userId = user.uid;
 
-        // Збираємо всі дані
         const dataToSave = {
             supplies: window.suppliesStatus || {},
             shopping: window.shoppingList || {},
@@ -264,14 +311,12 @@ async function autoSaveToFirebaseNoPrompt() {
             lastUpdate: new Date().toISOString()
         };
 
-        // Зберігаємо в Firebase
         if (typeof window.database !== 'undefined') {
             const userRef = window.database.ref(`users/${userId}`);
             await userRef.set(dataToSave);
             console.log('✅ Дані автоматично збережено в Firebase');
         }
 
-        // Також зберігаємо в localStorage для кешу
         if (typeof window.autoSaveToCache === 'function') {
             window.autoSaveToCache();
         }
@@ -326,9 +371,11 @@ function showError(message) {
 function getErrorMessage(error) {
     let msg = 'Вибачте, виникла помилка з\'єднання з Gemini API.\n\n';
     if (error.message.includes('401') || error.message.includes('403')) {
-        msg += 'Перевірте API ключ Gemini';
+        msg += 'Помилка авторизації. Перевірте налаштування API.';
     } else if (error.message.includes('429')) {
         msg += 'Перевищено ліміт запитів. Спробуйте через хвилину.';
+    } else if (error.message.includes('No API keys configured')) {
+        msg += 'API ключі не налаштовані на сервері. Зверніться до адміністратора.';
     } else {
         msg += error.message;
     }
@@ -379,9 +426,12 @@ function createMessageElement(content, sender, isLoading = false) {
 }
 
 // Ініціалізація чату
-function initChat() {
+async function initChat() {
     const chatContainer = document.getElementById('chatMessages');
     if (!chatContainer) return;
+
+    // Завантажуємо промпт користувача
+    await loadUserPrompt();
 
     loadHistoryFromCache();
     
@@ -724,4 +774,4 @@ window.clearChat = clearChat;
 window.initChat = initChat;
 window.updateJarvisContext = updateContext;
 
-console.log('✅ Джарвіс з автозбереженням та командами перегляду завантажено');
+console.log('✅ Джарвіс з Vercel API завантажено');
