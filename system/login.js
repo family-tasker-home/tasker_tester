@@ -4,18 +4,12 @@
 let currentUser = null;
 let selectedUsername = null;
 
-// Емодзі для аватарів
-const AVATARS = {
-    'Admin': '👑',
-    'Настя': '👩',
-    'Лев': '🦁',
-    'Ярик': '⚡',
-    'Анонім': '👤'
-};
-
 // Ініціалізація системи автентифікації
-window.initAuthSystem = function() {
+window.initAuthSystem = async function() {
     console.log('🔐 Ініціалізація системи автентифікації...');
+    
+    // Завантажуємо профілі
+    await window.loadProfiles();
     
     // Перевіряємо, чи є збережений користувач
     const savedUser = localStorage.getItem('halloween_user');
@@ -39,7 +33,7 @@ function showLoginForm() {
     const app = document.getElementById('app');
     
     // Перевіряємо чи конфігурація завантажена
-    if (typeof USERS === 'undefined') {
+    if (typeof USERS === 'undefined' || Object.keys(USERS).length === 0) {
         app.innerHTML = `
             <div class="login-overlay" id="loginOverlay">
                 <div class="login-container">
@@ -49,7 +43,7 @@ function showLoginForm() {
                         <p>Завантаження...</p>
                     </div>
                     <div class="error-message">
-                        Помилка: конфігурація не завантажена. Перезавантажте сторінку.
+                        Помилка: профілі не завантажені. Перезавантажте сторінку.
                     </div>
                 </div>
             </div>
@@ -60,15 +54,27 @@ function showLoginForm() {
     // Генеруємо список акаунтів
     let accountsHTML = '';
     for (const [username, user] of Object.entries(USERS)) {
-        const avatar = AVATARS[username] || '👤';
-        const roleText = user.role === 'Dev' ? '🔧 Розробник' : '👀 Користувач';
+        const avatar = user.avatar || '👤';
+        
+        // Отримуємо роль на сьогодні
+        const roleInfo = window.getTodayRoleInfo(username);
+        const roleEmoji = {
+            'Dev': '🔧',
+            'Кухня': '🍳',
+            'Ванна': '🚿',
+            'Кладовка': '📦',
+            'Viewer': '👀'
+        };
+        
+        const roleText = `${roleEmoji[roleInfo.role] || '👀'} ${roleInfo.role}`;
+        const dayInfo = roleInfo.role !== 'Dev' ? ` (${roleInfo.dayName})` : '';
         
         accountsHTML += `
-            <div class="account-card" onclick="window.selectAccount('${username}')">
+            <div class="account-card" data-role="${roleInfo.role}" onclick="window.selectAccount('${username}')">
                 <div class="account-avatar">${avatar}</div>
                 <div class="account-info">
                     <p class="account-name">${user.name}</p>
-                    <p class="account-role">${roleText}</p>
+                    <p class="account-role">${roleText}${dayInfo}</p>
                 </div>
                 <div class="account-arrow">→</div>
             </div>
@@ -129,11 +135,16 @@ window.selectAccount = function(username) {
     
     // Якщо це Анонім - входимо без пароля
     if (username === 'Анонім') {
+        const roleInfo = window.getTodayRoleInfo(username);
+        
         currentUser = {
             name: user.name,
             username: username,
-            role: user.role,
-            promptFile: user.promptFile
+            role: roleInfo.role,
+            promptFile: user.promptFile,
+            avatar: user.avatar,
+            canModify: roleInfo.canModify,
+            canSave: roleInfo.canSave
         };
         
         localStorage.setItem('halloween_user', JSON.stringify(currentUser));
@@ -145,15 +156,26 @@ window.selectAccount = function(username) {
     }
     
     // Для інших користувачів показуємо форму пароля
-    const avatar = AVATARS[username] || '👤';
-    const roleText = user.role === 'Dev' ? '🔧 Розробник' : '👀 Користувач';
+    const avatar = user.avatar || '👤';
+    const roleInfo = window.getTodayRoleInfo(username);
+    
+    const roleEmoji = {
+        'Dev': '🔧',
+        'Кухня': '🍳',
+        'Ванна': '🚿',
+        'Кладовка': '📦',
+        'Viewer': '👀'
+    };
+    
+    const roleText = `${roleEmoji[roleInfo.role] || '👀'} ${roleInfo.role}`;
+    const dayInfo = roleInfo.role !== 'Dev' ? ` (${roleInfo.dayName})` : '';
     
     // Оновлюємо інформацію про вибраний акаунт
     document.getElementById('selectedAccountInfo').innerHTML = `
         <div class="account-avatar">${avatar}</div>
         <div class="selected-account-info">
             <p class="selected-account-name">${user.name}</p>
-            <p class="selected-account-role">${roleText}</p>
+            <p class="selected-account-role">${roleText}${dayInfo}</p>
         </div>
     `;
     
@@ -191,17 +213,30 @@ window.loginWithPassword = function(event) {
     
     // Перевіряємо пароль
     if (user && user.password === password) {
+        const roleInfo = window.getTodayRoleInfo(selectedUsername);
+        
         currentUser = {
             name: user.name,
             username: selectedUsername,
-            role: user.role,
-            promptFile: user.promptFile
+            role: roleInfo.role,
+            promptFile: user.promptFile,
+            avatar: user.avatar,
+            canModify: roleInfo.canModify,
+            canSave: roleInfo.canSave,
+            dayName: roleInfo.dayName
         };
         
         localStorage.setItem('halloween_user', JSON.stringify(currentUser));
         showAppContent();
         setTimeout(() => {
-            showMessage(`Вітаємо, ${user.name}!`, 'success');
+            const roleEmoji = {
+                'Dev': '🔧',
+                'Кухня': '🍳',
+                'Ванна': '🚿',
+                'Кладовка': '📦',
+                'Viewer': '👀'
+            };
+            showMessage(`Вітаємо, ${user.name}! 🎉\n\nВаша роль сьогодні: ${roleEmoji[roleInfo.role]} ${roleInfo.role}`, 'success');
         }, 100);
     } else {
         showMessage('Неправильний пароль', 'error');
@@ -221,7 +256,7 @@ function showAppContent() {
     
     // Викликаємо функцію створення структури з general.js
     if (typeof window.createMainApp === 'function') {
-        window.createMainApp(currentUser, AVATARS);
+        window.createMainApp(currentUser, USERS);
     } else {
         console.error('❌ Функція createMainApp не знайдена!');
     }
@@ -247,12 +282,16 @@ window.logout = function() {
 
 // Перевірка прав на зміну даних
 function canModifyData() {
-    return currentUser && currentUser.role === 'Dev';
+    if (!currentUser) return false;
+    const role = window.getCurrentRole(currentUser.username);
+    return role !== "Viewer";
 }
 
 // Перевірка прав на збереження в Firebase
 function canSaveToFirebase() {
-    return currentUser && currentUser.role === 'Dev';
+    if (!currentUser) return false;
+    const role = window.getCurrentRole(currentUser.username);
+    return role !== "Viewer";
 }
 
 // Показати повідомлення
@@ -273,6 +312,5 @@ function showMessage(message, type = 'error') {
 window.canModifyData = canModifyData;
 window.canSaveToFirebase = canSaveToFirebase;
 window.currentUser = () => currentUser;
-window.getAvatars = () => AVATARS;
 
-console.log('✅ Login system завантажено');
+console.log('✅ Login system завантажено (dynamic roles version)');
