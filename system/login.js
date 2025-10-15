@@ -32,7 +32,7 @@ function showLoginForm() {
             <div class="login-container">
                 <div class="login-header">
                     <h1>🎃</h1>
-                    <h2>Halloween Planner</h2>
+                    <h2>Кухонний Планувальник</h2>
                     <p>Вхід в систему</p>
                 </div>
                 
@@ -46,7 +46,6 @@ function showLoginForm() {
                             <datalist id="usernames">
                                 <option value="Admin">
                                 <option value="Настя">
-                                <option value="Микола">
                                 <option value="Лев">
                                 <option value="Ярик">
                                 <option value="Анонім">
@@ -98,7 +97,7 @@ function showAppContent() {
             <!-- Sidebar Navigation -->
             <div class="sidebar" id="sidebar">
                 <div class="sidebar-header">
-                    <h2>🎃 Halloween Planner</h2>
+                    <h2>🎃 Кухонний Планувальник</h2>
                     <div class="user-badge">
                         <span>${currentUser.name}</span>
                         <span class="role-badge role-${currentUser.role.toLowerCase()}">${currentUser.role}</span>
