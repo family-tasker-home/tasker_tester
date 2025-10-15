@@ -711,7 +711,6 @@ window.initChat = initChat;
 window.updateJarvisContext = updateContext;
 
 console.log('✅ Джарвіс з виділеними API ключами завантажено');
- Видаляємо ВСІХ команд з відповіді
             commandsExecuted.forEach(cmd => {
                 aiResponse = aiResponse.replace(cmd.original, '');
             });
