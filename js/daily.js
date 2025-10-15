@@ -22,18 +22,13 @@ window.createDailySection = function() {
         return;
     }
     
-    const roleInfo = window.getTodayRoleInfo ? window.getTodayRoleInfo(currentUser.username) : null;
-    const todayRole = roleInfo ? roleInfo.role : 'Viewer';
-    const dayName = roleInfo ? roleInfo.dayName : '';
-    const canModify = todayRole !== 'Viewer';
-    
     section.innerHTML = `
         <div class="container">
             <div class="header">
                 <h1>📅 Розпорядок дня</h1>
                 <p>Профіль: <strong>${currentUser.avatar} ${currentUser.name}</strong></p>
-                <p style="font-size: 0.9em; margin-top: 5px;">Ваша роль сьогодні (${dayName}): <strong>${todayRole}</strong></p>
-                <p style="color: #4CAF50; font-size: 0.9em; margin-top: 5px;">💾 Всі зміни автоматично зберігаються в базу</p>
+                <p style="color: #4CAF50; font-size: 0.9em; margin-top: 10px;">💾 Всі зміни автоматично зберігаються в базу</p>
+                <p style="color: #d0d0d0; font-size: 0.85em; margin-top: 5px; opacity: 0.8;">Це ваш персональний розпорядок - тільки ви його бачите</p>
             </div>
             
             <div class="content">
@@ -206,6 +201,26 @@ window.renderDailySchedule = function() {
     console.log(`📋 Відображено ${schedule.length} завдань для ${currentUser.username}`);
 };
 
+// Функція для показу статусу збереження
+window.showSaveStatus = function(message, type = 'success') {
+    // Видаляємо попередні повідомлення
+    const existingStatus = document.querySelector('.save-status');
+    if (existingStatus) {
+        existingStatus.remove();
+    }
+    
+    const statusDiv = document.createElement('div');
+    statusDiv.className = `save-status ${type}`;
+    statusDiv.textContent = message;
+    
+    document.body.appendChild(statusDiv);
+    
+    setTimeout(() => {
+        statusDiv.style.animation = 'slideOutToRight 0.3s ease';
+        setTimeout(() => statusDiv.remove(), 300);
+    }, 2000);
+};
+
 // Експорт для Firebase (повертає розпорядок ТІЛЬКИ поточного користувача)
 window.getDailyScheduleForSave = function() {
     const currentUser = window.currentUser ? window.currentUser() : null;
@@ -232,32 +247,6 @@ window.loadDailyScheduleFromSave = function(username, data) {
     }
     
     console.log(`✅ Розпорядок завантажено для ${username}:`, data);
-};
-
-// Додаткова функція для показу статусу збереження
-window.showSaveStatus = function(message, type = 'success') {
-    const statusDiv = document.createElement('div');
-    statusDiv.className = `save-status ${type}`;
-    statusDiv.textContent = message;
-    statusDiv.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        background: ${type === 'success' ? '#4CAF50' : '#f44336'};
-        color: white;
-        padding: 12px 20px;
-        border-radius: 8px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-        z-index: 10000;
-        animation: slideIn 0.3s ease;
-    `;
-    
-    document.body.appendChild(statusDiv);
-    
-    setTimeout(() => {
-        statusDiv.style.animation = 'slideOut 0.3s ease';
-        setTimeout(() => statusDiv.remove(), 300);
-    }, 2000);
 };
 
 console.log('✅ Daily schedule system завантажено (персоналізована версія з автозбереженням)');
