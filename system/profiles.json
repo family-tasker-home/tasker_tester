@@ -18,7 +18,7 @@
   },
   "Настя": {
     "password": "nastya123",
-    "secretCode": "nastya_kitchen",
+    "secretCode": "nastya_haha",
     "name": "Настя",
     "avatar": "👩",
     "promptFile": "nastya",
@@ -34,7 +34,7 @@
   },
   "Микола": {
     "password": "mykola",
-    "secretCode": "mykola_home",
+    "secretCode": "mykola",
     "name": "Микола",
     "avatar": "👨",
     "promptFile": "mykola",
