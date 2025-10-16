@@ -236,9 +236,8 @@ window.renderSupplies = function() {
             <div class="supply-category ${isOpen ? 'open' : 'closed'}">
                 <div class="supply-category-header" onclick="window.toggleSupplyCategory('${categoryKey}')">
                     <h3>${category.display}</h3>
-                    <span class="toggle-icon">${isOpen ? '▼' : '▶'}</span>
                 </div>
-                <div class="supply-items" style="display: ${isOpen ? 'flex' : 'none'};">
+                <div class="supply-items">
                     ${itemsHtml}
                 </div>
             </div>
