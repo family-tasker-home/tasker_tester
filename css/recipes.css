@@ -252,6 +252,7 @@
     gap: 15px;
     font-size: 0.95em;
     color: #b0b0b0;
+    flex-wrap: wrap;
 }
 
 /* Categories Section */
@@ -409,6 +410,29 @@
     border: 1px solid #e74c3c;
 }
 
+/* Recipe Type Badge */
+.recipe-card-type {
+    margin-bottom: 15px;
+}
+
+.recipe-type-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: 18px;
+    font-size: 0.9em;
+    font-weight: 600;
+    border: 2px solid;
+    background: rgba(0, 0, 0, 0.2);
+    transition: all 0.3s ease;
+}
+
+.recipe-type-badge:hover {
+    background: rgba(0, 0, 0, 0.3);
+    transform: scale(1.05);
+}
+
 .recipe-card-info {
     display: flex;
     gap: 20px;
@@ -482,9 +506,15 @@
     display: flex;
     gap: 20px;
     flex-wrap: wrap;
+    align-items: center;
 }
 
 .recipe-meta .recipe-difficulty {
+    padding: 8px 16px;
+    font-size: 0.95em;
+}
+
+.recipe-meta .recipe-type-badge {
     padding: 8px 16px;
     font-size: 0.95em;
 }
@@ -719,6 +749,7 @@
     .recipe-meta {
         flex-direction: column;
         gap: 10px;
+        align-items: flex-start;
     }
     
     .steps-list li {
