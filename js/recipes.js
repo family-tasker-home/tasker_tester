@@ -11,7 +11,6 @@ const recipeCategories = [
     { name: 'Булгур', icon: '🌾', file: 'recepts/bulgur.json' }
 ];
 
-
 // Кеш завантажених рецептів
 let recipesCache = {};
 
@@ -74,13 +73,8 @@ window.createRecipesSection = function() {
                 </div>
 
                 <!-- Список рецептів -->
-                <div class="recipes-list" id="recipesList">
-                    <div class="empty-state">
-                        <svg viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22A10,10 0 0,1 2,12A10,10 0 0,1 12,2M12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20A8,8 0 0,0 20,12A8,8 0 0,0 12,4M12,10.5A1.5,1.5 0 0,1 13.5,12A1.5,1.5 0 0,1 12,13.5A1.5,1.5 0 0,1 10.5,12A1.5,1.5 0 0,1 12,10.5Z"/>
-                        </svg>
-                        <p>Оберіть категорію рецептів або скористайтеся пошуком</p>
-                    </div>
+                <div class="recipes-list" id="recipesList" style="display: none;">
+                    <!-- Рецепти створюються динамічно -->
                 </div>
 
                 <!-- Детальний вигляд рецепту -->
@@ -103,28 +97,26 @@ function renderCategories() {
     const grid = document.getElementById('categoriesGrid');
     
     grid.innerHTML = recipeCategories.map(category => `
-        <div class="category-card ${currentOpenCategory === category.file ? 'active' : ''}" 
-             onclick="window.toggleRecipeCategory('${category.file}', '${category.name}')">
+        <div class="category-card" onclick="window.toggleRecipeCategory('${category.file}', '${category.name}')">
             <div class="category-icon">${category.icon}</div>
             <div class="category-name">${category.name}</div>
         </div>
     `).join('');
 }
 
-// Перемикання категорії рецептів (toggle)
+// Перемикання категорії рецептів
 window.toggleRecipeCategory = function(file, categoryName) {
-    // Якщо натискаємо на ту саму категорію - закриваємо
-    if (currentOpenCategory === file) {
-        currentOpenCategory = null;
-        closeRecipesList();
-    } else {
-        // Відкриваємо нову категорію
-        currentOpenCategory = file;
-        window.loadRecipeCategory(file, categoryName);
-    }
+    // Відкриваємо категорію
+    currentOpenCategory = file;
+    window.loadRecipeCategory(file, categoryName);
     
-    // Оновлюємо вигляд категорій
-    renderCategories();
+    // Ховаємо категорії та показуємо тільки рецепти
+    document.querySelector('.recipes-categories').style.display = 'none';
+    document.querySelector('.header').style.display = 'none';
+    document.getElementById('recipesList').style.display = 'block';
+    
+    // Прокрутка нагору
+    window.scrollTo({ top: 0, behavior: 'smooth' });
 };
 
 // Закрити список рецептів
@@ -133,15 +125,17 @@ function closeRecipesList() {
     const recipeDetail = document.getElementById('recipeDetail');
     
     recipeDetail.style.display = 'none';
+    recipesList.style.display = 'none';
     
-    recipesList.innerHTML = `
-        <div class="empty-state">
-            <svg viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22A10,10 0 0,1 2,12A10,10 0 0,1 12,2M12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20A8,8 0 0,0 20,12A8,8 0 0,0 12,4M12,10.5A1.5,1.5 0 0,1 13.5,12A1.5,1.5 0 0,1 12,13.5A1.5,1.5 0 0,1 10.5,12A1.5,1.5 0 0,1 12,10.5Z"/>
-            </svg>
-            <p>Оберіть категорію рецептів</p>
-        </div>
-    `;
+    // Показуємо назад категорії та заголовок
+    document.querySelector('.recipes-categories').style.display = 'block';
+    document.querySelector('.header').style.display = 'block';
+    
+    currentOpenCategory = null;
+    renderCategories();
+    
+    // Прокрутка нагору
+    window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 // Завантаження рецептів категорії
@@ -198,6 +192,9 @@ function renderRecipesList(data, categoryName) {
     const recipesList = document.getElementById('recipesList');
     
     recipesList.innerHTML = `
+        <button class="back-btn" onclick="closeRecipesList()">
+            ← Назад до категорій
+        </button>
         <div class="recipes-header">
             <h2>${data.icon} ${data.category}</h2>
             <p class="recipes-count">${data.recipes.length} рецептів</p>
@@ -231,6 +228,7 @@ function renderRecipesList(data, categoryName) {
 // Показати деталі рецепту
 window.showRecipeDetail = function(categoryName, recipeId) {
     const recipeDetail = document.getElementById('recipeDetail');
+    const recipesList = document.getElementById('recipesList');
     
     // Знайти рецепт в кеші
     let recipe = null;
@@ -246,6 +244,9 @@ window.showRecipeDetail = function(categoryName, recipeId) {
         console.error('Рецепт не знайдено');
         return;
     }
+    
+    // Ховаємо список рецептів
+    recipesList.style.display = 'none';
     
     // Відобразити деталі
     recipeDetail.innerHTML = `
@@ -286,16 +287,21 @@ window.showRecipeDetail = function(categoryName, recipeId) {
     `;
     
     recipeDetail.style.display = 'block';
-    recipeDetail.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    
+    // Прокрутка нагору
+    window.scrollTo({ top: 0, behavior: 'smooth' });
 };
 
 // Закрити деталі рецепту
 window.closeRecipeDetail = function() {
     const recipeDetail = document.getElementById('recipeDetail');
-    recipeDetail.style.display = 'none';
-    
     const recipesList = document.getElementById('recipesList');
-    recipesList.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    
+    recipeDetail.style.display = 'none';
+    recipesList.style.display = 'block';
+    
+    // Прокрутка нагору
+    window.scrollTo({ top: 0, behavior: 'smooth' });
 };
 
 // ===== ФУНКЦІЇ ПОШУКУ =====
@@ -451,6 +457,10 @@ function getRecipeWord(count) {
 window.showRecipeDetailFromSearch = function(categoryName, recipeId) {
     // Закриваємо пошук
     closeSearch();
+    
+    // Ховаємо категорії та заголовок
+    document.querySelector('.recipes-categories').style.display = 'none';
+    document.querySelector('.header').style.display = 'none';
     
     // Показуємо деталі рецепту
     window.showRecipeDetail(categoryName, recipeId);
