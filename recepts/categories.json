@@ -1,0 +1,12 @@
+[
+    {
+        "name": "Мясні страви",
+        "icon": "🍖",
+        "file": "recepts/meat/meat.json"
+    },
+    {
+        "name": "Рибні страви",
+        "icon": "🐟",
+        "file": "recepts/fish/fish.json"
+    }
+]
