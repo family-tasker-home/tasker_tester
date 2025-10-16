@@ -1,12 +1,22 @@
 [
     {
-        "name": "Мясні страви",
+        "name": "М'ясні страви",
         "icon": "🍖",
-        "file": "recepts/meat/meat.json"
+        "file": "recepts/meat/macaroni.json"
     },
     {
         "name": "Рибні страви",
         "icon": "🐟",
-        "file": "recepts/fish/fish.json"
+        "file": "recepts/fish/macaroni.json"
+    },
+    {
+        "name": "Вегетаріанські",
+        "icon": "🥗",
+        "file": "recepts/vegetarian/macaroni.json"
+    },
+    {
+        "name": "Веганські",
+        "icon": "🌱",
+        "file": "recepts/vegan/macaroni.json"
     }
 ]
