@@ -1,15 +1,28 @@
-// ===== RECIPES LOGIC =====
+// ===== RECIPES LOGIC WITH DYNAMIC CATEGORIES =====
 
-// Список категорій рецептів
-const recipeCategories = [
-    { name: 'Макарони', icon: '🍝', file: 'recepts/macaroni.json' },
-    { name: 'Рис', icon: '🍚', file: 'recepts/rice.json' },
-    { name: 'Гречка', icon: '🌾', file: 'recepts/buckwheat.json' },
-    { name: 'Картопля', icon: '🥔', file: 'recepts/potato.json' },
-    { name: 'Птітім', icon: '🍝', file: 'recepts/ptitim.json' },
-    { name: 'Бульйон', icon: '🍲', file: 'recepts/broth.json' },
-    { name: 'Булгур', icon: '🌾', file: 'recepts/bulgur.json' }
-];
+// Маппінг типів страв на іконки та кольори
+const dishTypeConfig = {
+    'meat': {
+        name: 'Мясна',
+        icon: '🍖',
+        color: '#e74c3c'
+    },
+    'fish': {
+        name: 'Рибна',
+        icon: '🐟',
+        color: '#3498db'
+    },
+    'vegetarian': {
+        name: 'Вегетаріанська',
+        icon: '🥗',
+        color: '#2ecc71'
+    },
+    'vegan': {
+        name: 'Веганська',
+        icon: '🌱',
+        color: '#27ae60'
+    }
+};
 
 // Кеш завантажених рецептів
 let recipesCache = {};
@@ -23,8 +36,29 @@ let isSearchOpen = false;
 // Всі рецепти для пошуку
 let allRecipes = [];
 
+// Список категорій (завантажується динамічно)
+let recipeCategories = [];
+
+// Завантаження списку категорій
+async function loadCategories() {
+    try {
+        const response = await fetch('recepts/categories.json');
+        if (response.ok) {
+            const data = await response.json();
+            recipeCategories = data;
+            console.log(`✅ Завантажено ${recipeCategories.length} категорій`);
+        }
+    } catch (error) {
+        console.error('Помилка завантаження категорій:', error);
+        recipeCategories = [];
+    }
+}
+
 // Створення HTML структури секції рецептів
-window.createRecipesSection = function() {
+window.createRecipesSection = async function() {
+    // Завантажуємо категорії перед створенням
+    await loadCategories();
+    
     const section = document.getElementById('recipes-section');
     
     section.innerHTML = `
@@ -85,16 +119,18 @@ window.createRecipesSection = function() {
         </div>
     `;
     
-    // Відображення категорій
     renderCategories();
-    
-    // Завантаження всіх рецептів для пошуку
     loadAllRecipesForSearch();
 };
 
 // Відображення категорій
 function renderCategories() {
     const grid = document.getElementById('categoriesGrid');
+    
+    if (recipeCategories.length === 0) {
+        grid.innerHTML = '<p style="color: #b0b0b0; grid-column: 1/-1;">Категорії не завантажені</p>';
+        return;
+    }
     
     grid.innerHTML = recipeCategories.map(category => `
         <div class="category-card" onclick="window.toggleRecipeCategory('${category.file}', '${category.name}')">
@@ -106,16 +142,13 @@ function renderCategories() {
 
 // Перемикання категорії рецептів
 window.toggleRecipeCategory = function(file, categoryName) {
-    // Відкриваємо категорію
     currentOpenCategory = file;
     window.loadRecipeCategory(file, categoryName);
     
-    // Ховаємо категорії та показуємо тільки рецепти
     document.querySelector('.recipes-categories').style.display = 'none';
     document.querySelector('.header').style.display = 'none';
     document.getElementById('recipesList').style.display = 'block';
     
-    // Прокрутка нагору
     window.scrollTo({ top: 0, behavior: 'smooth' });
 };
 
@@ -127,14 +160,12 @@ function closeRecipesList() {
     recipeDetail.style.display = 'none';
     recipesList.style.display = 'none';
     
-    // Показуємо назад категорії та заголовок
     document.querySelector('.recipes-categories').style.display = 'block';
     document.querySelector('.header').style.display = 'block';
     
     currentOpenCategory = null;
     renderCategories();
     
-    // Прокрутка нагору
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -143,10 +174,8 @@ window.loadRecipeCategory = async function(file, categoryName) {
     const recipesList = document.getElementById('recipesList');
     const recipeDetail = document.getElementById('recipeDetail');
     
-    // Сховати деталі рецепту
     recipeDetail.style.display = 'none';
     
-    // Показати завантаження
     recipesList.innerHTML = `
         <div class="loading-state">
             <div class="loading-spinner"></div>
@@ -155,13 +184,11 @@ window.loadRecipeCategory = async function(file, categoryName) {
     `;
     
     try {
-        // Перевірити кеш
         if (recipesCache[file]) {
             renderRecipesList(recipesCache[file], categoryName);
             return;
         }
         
-        // Завантажити з файлу
         const response = await fetch(file);
         if (!response.ok) {
             throw new Error('Не вдалося завантажити рецепти');
@@ -200,27 +227,35 @@ function renderRecipesList(data, categoryName) {
             <p class="recipes-count">${data.recipes.length} рецептів</p>
         </div>
         <div class="recipes-grid">
-            ${data.recipes.map(recipe => `
-                <div class="recipe-card" onclick="window.showRecipeDetail('${data.category}', '${recipe.id}')">
-                    <div class="recipe-card-header">
-                        <h3>${recipe.name}</h3>
-                        <span class="recipe-difficulty ${recipe.difficulty.toLowerCase()}">${recipe.difficulty}</span>
-                    </div>
-                    <div class="recipe-card-info">
-                        <div class="recipe-info-item">
-                            <span>⏱️</span>
-                            <span>${recipe.time}</span>
+            ${data.recipes.map(recipe => {
+                const dishType = dishTypeConfig[recipe.type] || dishTypeConfig.meat;
+                return `
+                    <div class="recipe-card" onclick="window.showRecipeDetail('${data.category}', '${recipe.id}')">
+                        <div class="recipe-card-header">
+                            <h3>${recipe.name}</h3>
+                            <span class="recipe-difficulty ${recipe.difficulty.toLowerCase()}">${recipe.difficulty}</span>
                         </div>
-                        <div class="recipe-info-item">
-                            <span>👥</span>
-                            <span>${recipe.servings} порцій</span>
+                        <div class="recipe-card-type">
+                            <span class="recipe-type-badge" style="border-color: ${dishType.color}; color: ${dishType.color};">
+                                ${dishType.icon} ${dishType.name}
+                            </span>
+                        </div>
+                        <div class="recipe-card-info">
+                            <div class="recipe-info-item">
+                                <span>⏱️</span>
+                                <span>${recipe.time}</span>
+                            </div>
+                            <div class="recipe-info-item">
+                                <span>👥</span>
+                                <span>${recipe.servings} порцій</span>
+                            </div>
+                        </div>
+                        <div class="recipe-card-footer">
+                            <span>Переглянути рецепт →</span>
                         </div>
                     </div>
-                    <div class="recipe-card-footer">
-                        <span>Переглянути рецепт →</span>
-                    </div>
-                </div>
-            `).join('')}
+                `;
+            }).join('')}
         </div>
     `;
 }
@@ -230,7 +265,6 @@ window.showRecipeDetail = function(categoryName, recipeId) {
     const recipeDetail = document.getElementById('recipeDetail');
     const recipesList = document.getElementById('recipesList');
     
-    // Знайти рецепт в кеші
     let recipe = null;
     for (const file in recipesCache) {
         const data = recipesCache[file];
@@ -245,10 +279,10 @@ window.showRecipeDetail = function(categoryName, recipeId) {
         return;
     }
     
-    // Ховаємо список рецептів
+    const dishType = dishTypeConfig[recipe.type] || dishTypeConfig.meat;
+    
     recipesList.style.display = 'none';
     
-    // Відобразити деталі
     recipeDetail.innerHTML = `
         <div class="recipe-detail-content">
             <button class="back-btn" onclick="window.closeRecipeDetail()">
@@ -259,6 +293,9 @@ window.showRecipeDetail = function(categoryName, recipeId) {
                 <h2>${recipe.name}</h2>
                 <div class="recipe-meta">
                     <span class="recipe-difficulty ${recipe.difficulty.toLowerCase()}">${recipe.difficulty}</span>
+                    <span class="recipe-type-badge" style="border-color: ${dishType.color}; color: ${dishType.color};">
+                        ${dishType.icon} ${dishType.name}
+                    </span>
                     <span class="recipe-time">⏱️ ${recipe.time}</span>
                     <span class="recipe-servings">👥 ${recipe.servings} порцій</span>
                 </div>
@@ -288,7 +325,6 @@ window.showRecipeDetail = function(categoryName, recipeId) {
     
     recipeDetail.style.display = 'block';
     
-    // Прокрутка нагору
     window.scrollTo({ top: 0, behavior: 'smooth' });
 };
 
@@ -300,7 +336,6 @@ window.closeRecipeDetail = function() {
     recipeDetail.style.display = 'none';
     recipesList.style.display = 'block';
     
-    // Прокрутка нагору
     window.scrollTo({ top: 0, behavior: 'smooth' });
 };
 
@@ -315,7 +350,6 @@ async function loadAllRecipesForSearch() {
             const response = await fetch(category.file);
             if (response.ok) {
                 const data = await response.json();
-                // Додаємо категорію до кожного рецепту
                 const recipesWithCategory = data.recipes.map(recipe => ({
                     ...recipe,
                     category: data.category,
@@ -382,10 +416,8 @@ window.searchRecipes = function() {
     const searchResults = document.getElementById('searchResults');
     const query = searchInput.value.trim().toLowerCase();
     
-    // Показати/сховати кнопку очищення
     clearBtn.style.display = query ? 'flex' : 'none';
     
-    // Якщо запит порожній
     if (!query) {
         searchResults.innerHTML = `
             <div class="empty-search">
@@ -398,12 +430,10 @@ window.searchRecipes = function() {
         return;
     }
     
-    // Фільтруємо рецепти
     const results = allRecipes.filter(recipe => 
         recipe.name.toLowerCase().includes(query)
     );
     
-    // Відображаємо результати
     if (results.length === 0) {
         searchResults.innerHTML = `
             <div class="no-results">
@@ -417,25 +447,28 @@ window.searchRecipes = function() {
         return;
     }
     
-    // Показуємо результати
     searchResults.innerHTML = `
         <div class="search-results-header">
             <h3>Знайдено: ${results.length} ${getRecipeWord(results.length)}</h3>
         </div>
         <div class="search-results-grid">
-            ${results.map(recipe => `
-                <div class="search-result-card" onclick="window.showRecipeDetailFromSearch('${recipe.category}', '${recipe.id}')">
-                    <div class="search-result-category">
-                        <span>${recipe.categoryIcon}</span>
-                        <span>${recipe.category}</span>
+            ${results.map(recipe => {
+                const dishType = dishTypeConfig[recipe.type] || dishTypeConfig.meat;
+                return `
+                    <div class="search-result-card" onclick="window.showRecipeDetailFromSearch('${recipe.category}', '${recipe.id}')">
+                        <div class="search-result-category">
+                            <span>${recipe.categoryIcon}</span>
+                            <span>${recipe.category}</span>
+                        </div>
+                        <h4>${highlightText(recipe.name, query)}</h4>
+                        <div class="search-result-info">
+                            <span style="color: ${dishType.color}; font-weight: 500;">${dishType.icon} ${dishType.name}</span>
+                            <span>⏱️ ${recipe.time}</span>
+                            <span class="recipe-difficulty ${recipe.difficulty.toLowerCase()}">${recipe.difficulty}</span>
+                        </div>
                     </div>
-                    <h4>${highlightText(recipe.name, query)}</h4>
-                    <div class="search-result-info">
-                        <span>⏱️ ${recipe.time}</span>
-                        <span class="recipe-difficulty ${recipe.difficulty.toLowerCase()}">${recipe.difficulty}</span>
-                    </div>
-                </div>
-            `).join('')}
+                `;
+            }).join('')}
         </div>
     `;
 };
@@ -455,13 +488,10 @@ function getRecipeWord(count) {
 
 // Показати рецепт з пошуку
 window.showRecipeDetailFromSearch = function(categoryName, recipeId) {
-    // Закриваємо пошук
     closeSearch();
     
-    // Ховаємо категорії та заголовок
     document.querySelector('.recipes-categories').style.display = 'none';
     document.querySelector('.header').style.display = 'none';
     
-    // Показуємо деталі рецепту
     window.showRecipeDetail(categoryName, recipeId);
 };
