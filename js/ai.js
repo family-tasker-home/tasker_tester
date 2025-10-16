@@ -1,5 +1,5 @@
 // AI Assistant - Джарвіс (Gemini API через Vercel)
-// Виправлена версія з персональними чатами та правильним промптом
+// Версія з фоновою обробкою запасів
 
 let currentApiKeyIndex = 0;
 let chatHistory = [];
@@ -19,13 +19,11 @@ async function loadUserPrompt() {
         const username = currentUser.username || 'Анонім';
         currentChatUser = username;
         
-        // Отримуємо API ключ індекс для користувача
         if (typeof window.getUserApiKeyIndex === 'function') {
             currentApiKeyIndex = window.getUserApiKeyIndex(username);
             console.log(`🔑 Користувач ${username} використовує API ключ #${currentApiKeyIndex}`);
         }
         
-        // Завантажуємо промпт з API
         const response = await fetch(`/api/prompts?username=${encodeURIComponent(username)}`);
         
         if (!response.ok) {
@@ -36,12 +34,10 @@ async function loadUserPrompt() {
         JARVIS_PROMPT = data.prompt;
         
         console.log('✅ Промпт завантажено для користувача:', username);
-        console.log('📝 Промпт містить:', JARVIS_PROMPT.substring(0, 200) + '...');
         return true;
     } catch (error) {
         console.error('❌ Помилка завантаження промпту:', error);
         
-        // Fallback промпт
         JARVIS_PROMPT = `Ти - Джарвіс, AI-асистент системи Halloween Planner.
         
 Допомагай користувачам з організацією меню, покупок, завдань та розкладу.
@@ -136,7 +132,7 @@ const supplyCategoryMap = {
     'vegetables': ['картопля', 'морква', 'цибуля', 'буряк', 'капуста', 'помідори', 'огірки', 'перець', 'часник', 'зелень', 'кабачки', 'баклажани'],
     'fruits_nuts': ['яблука', 'банани', 'груші', 'ягоди', 'горіхи', 'сухофрукти', 'мед', 'варення', 'шоколад'],
     'spices_oils': ['сіль', 'перець', 'паприка', 'куркума', 'лавровий', 'базилік', 'олія', 'соус', 'кетчуп', 'майонез', 'гірчиця', 'оцет'],
-    'bread_bakery': ['хліб', 'батон', 'булочки', 'сухарики', 'галети', 'крекери', 'лаваш', 'тортильї'],
+    'bread_bakery': ['хліб', 'батон', 'булочки', 'сухарики', 'крекери', 'лаваш', 'тортильї'],
     'beverages': ['вода', 'чай', 'кава', 'какао', 'сік', 'компот'],
     'canned_goods': ['горошок', 'кукурудза', 'квасоля', 'томатна паста', 'оливки', 'маслини', 'гриби', 'тушонка'],
     'baking_supplies': ['цукор', 'ванільний', 'розпушувач', 'какао', 'медові коржі']
@@ -325,79 +321,79 @@ function executeCommands(text) {
         // КОМАНДИ ПЕРЕГЛЯДУ ДАНИХ
         if (trimmed.startsWith('ПЕРЕГЛЯНУТИ_ЗАПАСИ')) {
             const freshData = refreshSuppliesData();
-            executedCommands.push({ original: line, type: 'ПЕРЕГЛЯНУТИ_ЗАПАСИ', data: freshData });
+            executedCommands.push({ original: line, type: 'ПЕРЕГЛЯНУТИ_ЗАПАСИ', data: freshData, isViewCommand: true });
         }
         else if (trimmed.startsWith('ПЕРЕГЛЯНУТИ_ПОКУПКИ')) {
             const freshData = refreshShoppingData();
-            executedCommands.push({ original: line, type: 'ПЕРЕГЛЯНУТИ_ПОКУПКИ', data: freshData });
+            executedCommands.push({ original: line, type: 'ПЕРЕГЛЯНУТИ_ПОКУПКИ', data: freshData, isViewCommand: true });
         }
         else if (trimmed.startsWith('ПЕРЕГЛЯНУТИ_МЕНЮ')) {
             const freshData = refreshMenuData();
-            executedCommands.push({ original: line, type: 'ПЕРЕГЛЯНУТИ_МЕНЮ', data: freshData });
+            executedCommands.push({ original: line, type: 'ПЕРЕГЛЯНУТИ_МЕНЮ', data: freshData, isViewCommand: true });
         }
         else if (trimmed.startsWith('ПЕРЕГЛЯНУТИ_РОЗКЛАД')) {
             const freshData = refreshScheduleData();
-            executedCommands.push({ original: line, type: 'ПЕРЕГЛЯНУТИ_РОЗКЛАД', data: freshData });
+            executedCommands.push({ original: line, type: 'ПЕРЕГЛЯНУТИ_РОЗКЛАД', data: freshData, isViewCommand: true });
         }
         else if (trimmed.startsWith('ПЕРЕГЛЯНУТИ_ЗАВДАННЯ')) {
             const freshData = refreshTasksData();
-            executedCommands.push({ original: line, type: 'ПЕРЕГЛЯНУТИ_ЗАВДАННЯ', data: freshData });
+            executedCommands.push({ original: line, type: 'ПЕРЕГЛЯНУТИ_ЗАВДАННЯ', data: freshData, isViewCommand: true });
         }
         else if (trimmed.startsWith('ПЕРЕГЛЯНУТИ_ВСЕ')) {
             const freshData = getCurrentSiteData();
-            executedCommands.push({ original: line, type: 'ПЕРЕГЛЯНУТИ_ВСЕ', data: freshData });
+            executedCommands.push({ original: line, type: 'ПЕРЕГЛЯНУТИ_ВСЕ', data: freshData, isViewCommand: true });
         }
         // КОМАНДИ МОДИФІКАЦІЇ
         else if (trimmed.startsWith('ДОДАТИ_ЗАПАС:')) {
             const params = trimmed.replace('ДОДАТИ_ЗАПАС:', '').trim().split(',').map(p => p.trim());
             if (params.length === 2) {
                 executeAddSupply(params[0], params[1]);
-                executedCommands.push({ original: line, type: 'ДОДАТИ_ЗАПАС' });
+                executedCommands.push({ original: line, type: 'ДОДАТИ_ЗАПАС', isViewCommand: false });
             }
         }
         else if (trimmed.startsWith('ДОДАТИ_ПОКУПКУ:')) {
             const params = trimmed.replace('ДОДАТИ_ПОКУПКУ:', '').trim().split(',').map(p => p.trim());
             if (params.length === 2) {
                 executeAddShopping(params[0], params[1]);
-                executedCommands.push({ original: line, type: 'ДОДАТИ_ПОКУПКУ' });
+                executedCommands.push({ original: line, type: 'ДОДАТИ_ПОКУПКУ', isViewCommand: false });
             }
         }
         else if (trimmed.startsWith('ВИДАЛИТИ_ПОКУПКУ:')) {
             const product = trimmed.replace('ВИДАЛИТИ_ПОКУПКУ:', '').trim();
             executeRemoveShopping(product);
-            executedCommands.push({ original: line, type: 'ВИДАЛИТИ_ПОКУПКУ' });
+            executedCommands.push({ original: line, type: 'ВИДАЛИТИ_ПОКУПКУ', isViewCommand: false });
         }
         else if (trimmed.startsWith('ДОДАТИ_МЕНЮ:')) {
             const params = trimmed.replace('ДОДАТИ_МЕНЮ:', '').trim().split(',').map(p => p.trim());
             if (params.length === 3) {
                 executeAddMenu(params[0], params[1], params[2]);
-                executedCommands.push({ original: line, type: 'ДОДАТИ_МЕНЮ' });
+                executedCommands.push({ original: line, type: 'ДОДАТИ_МЕНЮ', isViewCommand: false });
             }
         }
         else if (trimmed.startsWith('ВИДАЛИТИ_МЕНЮ:')) {
             const params = trimmed.replace('ВИДАЛИТИ_МЕНЮ:', '').trim().split(',').map(p => p.trim());
             if (params.length === 2) {
                 executeRemoveMenu(params[0], params[1]);
-                executedCommands.push({ original: line, type: 'ВИДАЛИТИ_МЕНЮ' });
+                executedCommands.push({ original: line, type: 'ВИДАЛИТИ_МЕНЮ', isViewCommand: false });
             }
         }
         else if (trimmed.startsWith('ДОДАТИ_РОЗКЛАД:')) {
             const params = trimmed.replace('ДОДАТИ_РОЗКЛАД:', '').trim().split(',').map(p => p.trim());
             if (params.length === 2) {
                 executeAddSchedule(params[0], params[1]);
-                executedCommands.push({ original: line, type: 'ДОДАТИ_РОЗКЛАД' });
+                executedCommands.push({ original: line, type: 'ДОДАТИ_РОЗКЛАД', isViewCommand: false });
             }
         }
         else if (trimmed.startsWith('ВИДАЛИТИ_РОЗКЛАД:')) {
             const time = trimmed.replace('ВИДАЛИТИ_РОЗКЛАД:', '').trim();
             executeRemoveSchedule(time);
-            executedCommands.push({ original: line, type: 'ВИДАЛИТИ_РОЗКЛАД' });
+            executedCommands.push({ original: line, type: 'ВИДАЛИТИ_РОЗКЛАД', isViewCommand: false });
         }
         else if (trimmed.startsWith('ДОДАТИ_ЗАВДАННЯ:')) {
             const params = trimmed.replace('ДОДАТИ_ЗАВДАННЯ:', '').trim().split(',').map(p => p.trim());
             if (params.length === 2) {
                 executeAddTask(params[0], params[1]);
-                executedCommands.push({ original: line, type: 'ДОДАТИ_ЗАВДАННЯ' });
+                executedCommands.push({ original: line, type: 'ДОДАТИ_ЗАВДАННЯ', isViewCommand: false });
             }
         }
     }
@@ -407,7 +403,6 @@ function executeCommands(text) {
 
 // Відправка повідомлення до Gemini AI через Vercel
 async function sendMessageToAI(message) {
-    // Перевірка промпту
     if (!JARVIS_PROMPT) {
         await loadUserPrompt();
         if (!JARVIS_PROMPT) {
@@ -429,16 +424,13 @@ async function sendMessageToAI(message) {
         
         console.log('📤 Відправка до Gemini API...');
         console.log('🔑 API Key Index:', currentApiKeyIndex);
-        console.log('📝 Кількість повідомлень в історії:', contents.length);
         
-        // Визначаємо endpoint
         const endpoint = typeof API_ENDPOINT !== 'undefined' && API_ENDPOINT 
             ? API_ENDPOINT 
             : '/api/gemini';
         
         console.log(`📤 Відправка запиту з API ключем #${currentApiKeyIndex}`);
         
-        // Відправляємо запит через Vercel API з виділеним ключем користувача
         const response = await fetch(endpoint, {
             method: 'POST',
             headers: { 
@@ -467,7 +459,6 @@ async function sendMessageToAI(message) {
             throw new Error('Некоректна відповідь від Gemini API');
         }
         
-        // Логуємо інформацію про використаний ключ
         if (data.assignedUser) {
             console.log(`✅ Відповідь отримана від ключа #${data.usedApiIndex} (${data.assignedUser})`);
         }
@@ -477,7 +468,7 @@ async function sendMessageToAI(message) {
 
         console.log('📥 Відповідь від AI:', aiResponse.substring(0, 100) + '...');
 
-        // ОБРОБКА КОМАНД і АВТОЗБЕРЕЖЕННЯ
+        // ОБРОБКА КОМАНД
         const commandsExecuted = executeCommands(aiResponse);
         
         if (commandsExecuted.length > 0) {
@@ -491,89 +482,50 @@ async function sendMessageToAI(message) {
         aiResponse = aiResponse.trim();
         
         // Перевірка команд перегляду даних
-        const viewCommands = commandsExecuted.filter(cmd => cmd.type.startsWith('ПЕРЕГЛЯНУТИ_'));
+        const viewCommands = commandsExecuted.filter(cmd => cmd.isViewCommand);
         
         if (viewCommands.length > 0) {
+            // ФОНОВИЙ РЕЖИМ: показуємо повідомлення, але без переривання розмови
             chatHistory.push({ role: 'user', content: message });
-            if (aiResponse) {
-                chatHistory.push({ role: 'assistant', content: aiResponse });
-            }
+            chatHistory.push({ role: 'assistant', content: aiResponse });
             
-            let freshDataMessage = '📊 Оновлені дані:\n\n';
-            for (const cmd of viewCommands) {
-                freshDataMessage += cmd.data + '\n\n';
-            }
-            
-            chatHistory.push({ role: 'user', content: freshDataMessage });
-            
+            // Видаляємо loading повідомлення та показуємо основну відповідь
             chatContainer.removeChild(loadingMessage);
             if (aiResponse) {
                 chatContainer.appendChild(createMessageElement(aiResponse, 'assistant'));
             }
-            chatContainer.appendChild(createMessageElement(freshDataMessage, 'user'));
+            
+            // Показуємо дані у невеликому форматі внизу (фоновий режим)
+            let backgroundMessage = '📊 [Дані оновлено в фоні]\n\n';
+            for (const cmd of viewCommands) {
+                backgroundMessage += `✓ ${cmd.type}\n`;
+            }
+            
+            chatContainer.appendChild(createMessageElement(backgroundMessage, 'assistant', false, true));
             chatContainer.scrollTop = chatContainer.scrollHeight;
             
-            const newLoadingMessage = createMessageElement('Джарвіс аналізує оновлені дані...', 'assistant', true);
-            chatContainer.appendChild(newLoadingMessage);
-            chatContainer.scrollTop = chatContainer.scrollHeight;
-            
-            const followUpContents = buildConversationHistory('Проаналізуй ці дані та дай відповідь на моє питання');
-            
-            const followUpResponse = await fetch(endpoint, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    contents: followUpContents,
-                    apiKeyIndex: currentApiKeyIndex,
-                    generationConfig: {
-                        temperature: 0.9,
-                        topK: 40,
-                        topP: 0.95,
-                        maxOutputTokens: 2048,
-                    }
-                })
-            });
-            
-            if (!followUpResponse.ok) throw new Error(`HTTP error! status: ${followUpResponse.status}`);
-            
-            const followUpData = await followUpResponse.json();
-            if (!followUpData.candidates?.[0]?.content) throw new Error('Некоректна відповідь від Gemini API');
-            
-            let finalResponse = followUpData.candidates[0].content.parts[0].text;
-            finalResponse = cleanMarkdown(finalResponse);
-            
-            chatContainer.removeChild(newLoadingMessage);
-            chatContainer.appendChild(createMessageElement(finalResponse, 'assistant'));
-            chatContainer.scrollTop = chatContainer.scrollHeight;
-            
-            chatHistory.push({ role: 'assistant', content: finalResponse });
-            if (chatHistory.length > 20) chatHistory = chatHistory.slice(-20);
-            
-            saveHistoryToCache();
-            return;
-        }
-        
-        // Виконання команд модифікації та автозбереження
-        if (commandsExecuted.length > 0) {
-            console.log('✅ Виконано команд:', commandsExecuted.length);
-            
-            // АВТОМАТИЧНЕ ЗБЕРЕЖЕННЯ В FIREBASE БЕЗ PROMPT
-            const modifyCommands = commandsExecuted.filter(cmd => !cmd.type.startsWith('ПЕРЕГЛЯНУТИ_'));
-            if (modifyCommands.length > 0) {
+            // Автоматично збережемо дані
+            setTimeout(async () => {
+                console.log('💾 Автоматичне збереження в Firebase...');
+                await autoSaveToFirebaseNoPrompt();
+            }, 800);
+        } else {
+            // Звичайна обробка без команд перегляду
+            if (commandsExecuted.length > 0) {
                 setTimeout(async () => {
                     console.log('💾 Автоматичне збереження в Firebase...');
                     await autoSaveToFirebaseNoPrompt();
-                    conversationContext = getCurrentSiteData();
                 }, 800);
             }
+            
+            chatContainer.removeChild(loadingMessage);
+            chatContainer.appendChild(createMessageElement(aiResponse, 'assistant'));
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+            
+            chatHistory.push({ role: 'user', content: message });
+            chatHistory.push({ role: 'assistant', content: aiResponse });
         }
-
-        chatContainer.removeChild(loadingMessage);
-        chatContainer.appendChild(createMessageElement(aiResponse, 'assistant'));
-        chatContainer.scrollTop = chatContainer.scrollHeight;
-
-        chatHistory.push({ role: 'user', content: message });
-        chatHistory.push({ role: 'assistant', content: aiResponse });
+        
         if (chatHistory.length > 20) chatHistory = chatHistory.slice(-20);
         
         saveHistoryToCache();
@@ -751,9 +703,9 @@ function loadHistoryFromCache() {
 }
 
 // Створення елемента повідомлення
-function createMessageElement(content, sender, isLoading = false) {
+function createMessageElement(content, sender, isLoading = false, isBackground = false) {
     const messageDiv = document.createElement('div');
-    messageDiv.className = `message ${sender}${isLoading ? ' loading' : ''}`;
+    messageDiv.className = `message ${sender}${isLoading ? ' loading' : ''}${isBackground ? ' background-message' : ''}`;
     
     const messageContent = document.createElement('div');
     messageContent.className = 'message-content';
@@ -852,4 +804,4 @@ window.clearChat = clearChat;
 window.initChat = initChat;
 window.updateJarvisContext = updateContext;
 
-console.log('✅ Джарвіс з персональними чатами та правильним промптом завантажено');
+console.log('✅ Джарвіс з фоновою обробкою запасів завантажено');
