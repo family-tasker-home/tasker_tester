@@ -146,8 +146,54 @@ function findSupplyCategory(productName) {
     return 'vegetables';
 }
 
+// ПЕРЕВІРКА ПРАВ НА КОМАНДИ
+function checkCommandPermission(commandType) {
+    const currentUser = window.currentUser ? window.currentUser() : null;
+    if (!currentUser) {
+        console.log('⚠️ Користувач не авторизований');
+        return false;
+    }
+    
+    const role = window.getCurrentRole ? window.getCurrentRole(currentUser.username) : null;
+    
+    // Команди перегляду - доступні для ВСІХ
+    const viewCommands = ['ПЕРЕГЛЯНУТИ_ЗАПАСИ', 'ПЕРЕГЛЯНУТИ_ПОКУПКИ', 'ПЕРЕГЛЯНУТИ_МЕНЮ', 
+                          'ПЕРЕГЛЯНУТИ_РОЗКЛАД', 'ПЕРЕГЛЯНУТИ_ЗАВДАННЯ', 'ПЕРЕГЛЯНУТИ_ВСЕ'];
+    
+    if (viewCommands.includes(commandType)) {
+        return true; // Всі можуть переглядати
+    }
+    
+    // Команди змін - залежно від ролі
+    const modifyCommands = {
+        'ДОДАТИ_ЗАПАС': ['Dev', 'Кухня', 'Кладовка', 'Ванна'],
+        'ДОДАТИ_ПОКУПКУ': ['Dev', 'Кухня', 'Кладовка', 'Ванна'],
+        'ВИДАЛИТИ_ПОКУПКУ': ['Dev', 'Кухня', 'Кладовка', 'Ванна'],
+        'ДОДАТИ_МЕНЮ': ['Dev'],
+        'ВИДАЛИТИ_МЕНЮ': ['Dev'],
+        'ДОДАТИ_РОЗКЛАД': ['Dev'],
+        'ВИДАЛИТИ_РОЗКЛАД': ['Dev'],
+        'ДОДАТИ_ЗАВДАННЯ': ['Dev']
+    };
+    
+    if (modifyCommands[commandType]) {
+        const allowed = modifyCommands[commandType].includes(role);
+        if (!allowed) {
+            console.log(`❌ Користувач ${currentUser.name} (${role}) не має прав на ${commandType}`);
+        }
+        return allowed;
+    }
+    
+    return false;
+}
+
 // КОМАНДИ ВИКОНАННЯ
 function executeAddSupply(product, statusText) {
+    if (!checkCommandPermission('ДОДАТИ_ЗАПАС')) {
+        console.log('❌ Команда ДОДАТИ_ЗАПАС недоступна для вашої ролі');
+        return false;
+    }
+    
     const statusMap = { 'є': 'available', 'закінчується': 'low', 'немає': 'needed' };
     const status = statusMap[statusText.toLowerCase()] || 'available';
     const category = findSupplyCategory(product);
@@ -159,9 +205,15 @@ function executeAddSupply(product, statusText) {
     if (typeof window.autoSaveToCache === 'function') window.autoSaveToCache();
     
     console.log(`✅ Додано запас: ${product} (${statusText})`);
+    return true;
 }
 
 function executeAddShopping(categoryName, product) {
+    if (!checkCommandPermission('ДОДАТИ_ПОКУПКУ')) {
+        console.log('❌ Команда ДОДАТИ_ПОКУПКУ недоступна для вашої ролі');
+        return false;
+    }
+    
     const categoryMap = {
         "м'ясо": "🍖 Мясо та риба",
         "молочне": "🥛 Молочні продукти",
@@ -191,10 +243,17 @@ function executeAddShopping(categoryName, product) {
         if (typeof window.autoSaveToCache === 'function') window.autoSaveToCache();
         
         console.log(`✅ Додано в покупки: ${product}`);
+        return true;
     }
+    return false;
 }
 
 function executeRemoveShopping(product) {
+    if (!checkCommandPermission('ВИДАЛИТИ_ПОКУПКУ')) {
+        console.log('❌ Команда ВИДАЛИТИ_ПОКУПКУ недоступна для вашої ролі');
+        return false;
+    }
+    
     let found = false;
     for (const category in window.shoppingList) {
         window.shoppingList[category] = window.shoppingList[category].filter(item => {
@@ -210,10 +269,17 @@ function executeRemoveShopping(product) {
         if (typeof window.renderList === 'function') window.renderList();
         if (typeof window.autoSaveToCache === 'function') window.autoSaveToCache();
         console.log(`✅ Видалено з покупок: ${product}`);
+        return true;
     }
+    return false;
 }
 
 function executeAddMenu(day, meal, dish) {
+    if (!checkCommandPermission('ДОДАТИ_МЕНЮ')) {
+        console.log('❌ Команда ДОДАТИ_МЕНЮ недоступна для вашої ролі (тільки Dev)');
+        return false;
+    }
+    
     if (!window.weeklyMenu[day]) window.weeklyMenu[day] = {};
     window.weeklyMenu[day][meal] = dish;
     
@@ -221,9 +287,15 @@ function executeAddMenu(day, meal, dish) {
     if (typeof window.autoSaveToCache === 'function') window.autoSaveToCache();
     
     console.log(`✅ Додано меню: ${day}, ${meal} - ${dish}`);
+    return true;
 }
 
 function executeRemoveMenu(day, meal) {
+    if (!checkCommandPermission('ВИДАЛИТИ_МЕНЮ')) {
+        console.log('❌ Команда ВИДАЛИТИ_МЕНЮ недоступна для вашої ролі (тільки Dev)');
+        return false;
+    }
+    
     if (window.weeklyMenu[day] && window.weeklyMenu[day][meal]) {
         delete window.weeklyMenu[day][meal];
         
@@ -231,10 +303,17 @@ function executeRemoveMenu(day, meal) {
         if (typeof window.autoSaveToCache === 'function') window.autoSaveToCache();
         
         console.log(`✅ Видалено меню: ${day}, ${meal}`);
+        return true;
     }
+    return false;
 }
 
 function executeAddSchedule(time, event) {
+    if (!checkCommandPermission('ДОДАТИ_РОЗКЛАД')) {
+        console.log('❌ Команда ДОДАТИ_РОЗКЛАД недоступна для вашої ролі (тільки Dev)');
+        return false;
+    }
+    
     if (!window.dailySchedule) window.dailySchedule = [];
     
     const existingIndex = window.dailySchedule.findIndex(item => item.time === time);
@@ -255,9 +334,15 @@ function executeAddSchedule(time, event) {
     if (typeof window.autoSaveToCache === 'function') window.autoSaveToCache();
     
     console.log(`✅ Додано розклад: ${time} - ${event}`);
+    return true;
 }
 
 function executeRemoveSchedule(time) {
+    if (!checkCommandPermission('ВИДАЛИТИ_РОЗКЛАД')) {
+        console.log('❌ Команда ВИДАЛИТИ_РОЗКЛАД недоступна для вашої ролі (тільки Dev)');
+        return false;
+    }
+    
     if (window.dailySchedule) {
         window.dailySchedule = window.dailySchedule.filter(item => item.time !== time);
         
@@ -265,10 +350,17 @@ function executeRemoveSchedule(time) {
         if (typeof window.autoSaveToCache === 'function') window.autoSaveToCache();
         
         console.log(`✅ Видалено розклад: ${time}`);
+        return true;
     }
+    return false;
 }
 
 function executeAddTask(task, assignee) {
+    if (!checkCommandPermission('ДОДАТИ_ЗАВДАННЯ')) {
+        console.log('❌ Команда ДОДАТИ_ЗАВДАННЯ недоступна для вашої ролі (тільки Dev)');
+        return false;
+    }
+    
     if (!window.tasks) window.tasks = [];
     
     window.tasks.push({
@@ -282,6 +374,7 @@ function executeAddTask(task, assignee) {
     if (typeof window.autoSaveToCache === 'function') window.autoSaveToCache();
     
     console.log(`✅ Додано завдання: ${task} (${assignee})`);
+    return true;
 }
 
 // ФУНКЦІЇ ОНОВЛЕННЯ ДАНИХ
@@ -347,53 +440,53 @@ function executeCommands(text) {
         else if (trimmed.startsWith('ДОДАТИ_ЗАПАС:')) {
             const params = trimmed.replace('ДОДАТИ_ЗАПАС:', '').trim().split(',').map(p => p.trim());
             if (params.length === 2) {
-                executeAddSupply(params[0], params[1]);
-                executedCommands.push({ original: line, type: 'ДОДАТИ_ЗАПАС', isViewCommand: false });
+                const success = executeAddSupply(params[0], params[1]);
+                executedCommands.push({ original: line, type: 'ДОДАТИ_ЗАПАС', isViewCommand: false, success });
             }
         }
         else if (trimmed.startsWith('ДОДАТИ_ПОКУПКУ:')) {
             const params = trimmed.replace('ДОДАТИ_ПОКУПКУ:', '').trim().split(',').map(p => p.trim());
             if (params.length === 2) {
-                executeAddShopping(params[0], params[1]);
-                executedCommands.push({ original: line, type: 'ДОДАТИ_ПОКУПКУ', isViewCommand: false });
+                const success = executeAddShopping(params[0], params[1]);
+                executedCommands.push({ original: line, type: 'ДОДАТИ_ПОКУПКУ', isViewCommand: false, success });
             }
         }
         else if (trimmed.startsWith('ВИДАЛИТИ_ПОКУПКУ:')) {
             const product = trimmed.replace('ВИДАЛИТИ_ПОКУПКУ:', '').trim();
-            executeRemoveShopping(product);
-            executedCommands.push({ original: line, type: 'ВИДАЛИТИ_ПОКУПКУ', isViewCommand: false });
+            const success = executeRemoveShopping(product);
+            executedCommands.push({ original: line, type: 'ВИДАЛИТИ_ПОКУПКУ', isViewCommand: false, success });
         }
         else if (trimmed.startsWith('ДОДАТИ_МЕНЮ:')) {
             const params = trimmed.replace('ДОДАТИ_МЕНЮ:', '').trim().split(',').map(p => p.trim());
             if (params.length === 3) {
-                executeAddMenu(params[0], params[1], params[2]);
-                executedCommands.push({ original: line, type: 'ДОДАТИ_МЕНЮ', isViewCommand: false });
+                const success = executeAddMenu(params[0], params[1], params[2]);
+                executedCommands.push({ original: line, type: 'ДОДАТИ_МЕНЮ', isViewCommand: false, success });
             }
         }
         else if (trimmed.startsWith('ВИДАЛИТИ_МЕНЮ:')) {
             const params = trimmed.replace('ВИДАЛИТИ_МЕНЮ:', '').trim().split(',').map(p => p.trim());
             if (params.length === 2) {
-                executeRemoveMenu(params[0], params[1]);
-                executedCommands.push({ original: line, type: 'ВИДАЛИТИ_МЕНЮ', isViewCommand: false });
+                const success = executeRemoveMenu(params[0], params[1]);
+                executedCommands.push({ original: line, type: 'ВИДАЛИТИ_МЕНЮ', isViewCommand: false, success });
             }
         }
         else if (trimmed.startsWith('ДОДАТИ_РОЗКЛАД:')) {
             const params = trimmed.replace('ДОДАТИ_РОЗКЛАД:', '').trim().split(',').map(p => p.trim());
             if (params.length === 2) {
-                executeAddSchedule(params[0], params[1]);
-                executedCommands.push({ original: line, type: 'ДОДАТИ_РОЗКЛАД', isViewCommand: false });
+                const success = executeAddSchedule(params[0], params[1]);
+                executedCommands.push({ original: line, type: 'ДОДАТИ_РОЗКЛАД', isViewCommand: false, success });
             }
         }
         else if (trimmed.startsWith('ВИДАЛИТИ_РОЗКЛАД:')) {
             const time = trimmed.replace('ВИДАЛИТИ_РОЗКЛАД:', '').trim();
-            executeRemoveSchedule(time);
-            executedCommands.push({ original: line, type: 'ВИДАЛИТИ_РОЗКЛАД', isViewCommand: false });
+            const success = executeRemoveSchedule(time);
+            executedCommands.push({ original: line, type: 'ВИДАЛИТИ_РОЗКЛАД', isViewCommand: false, success });
         }
         else if (trimmed.startsWith('ДОДАТИ_ЗАВДАННЯ:')) {
             const params = trimmed.replace('ДОДАТИ_ЗАВДАННЯ:', '').trim().split(',').map(p => p.trim());
             if (params.length === 2) {
-                executeAddTask(params[0], params[1]);
-                executedCommands.push({ original: line, type: 'ДОДАТИ_ЗАВДАННЯ', isViewCommand: false });
+                const success = executeAddTask(params[0], params[1]);
+                executedCommands.push({ original: line, type: 'ДОДАТИ_ЗАВДАННЯ', isViewCommand: false, success });
             }
         }
     }
