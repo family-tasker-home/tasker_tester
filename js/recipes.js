@@ -1,9 +1,9 @@
-// ===== RECIPES LOGIC WITH DYNAMIC CATEGORIES =====
+// ===== RECIPES LOGIC WITH DISH TYPE CATEGORIES =====
 
 // Маппінг типів страв на іконки та кольори
 const dishTypeConfig = {
     'meat': {
-        name: 'Мясна',
+        name: 'М\'ясна',
         icon: '🍖',
         color: '#e74c3c'
     },
@@ -133,7 +133,7 @@ function renderCategories() {
     }
     
     grid.innerHTML = recipeCategories.map(category => `
-        <div class="category-card" onclick="window.toggleRecipeCategory('${category.file}', '${category.name}')">
+        <div class="category-card" onclick="window.toggleRecipeCategory('${category.type}', '${category.name}')">
             <div class="category-icon">${category.icon}</div>
             <div class="category-name">${category.name}</div>
         </div>
@@ -141,9 +141,9 @@ function renderCategories() {
 }
 
 // Перемикання категорії рецептів
-window.toggleRecipeCategory = function(file, categoryName) {
-    currentOpenCategory = file;
-    window.loadRecipeCategory(file, categoryName);
+window.toggleRecipeCategory = async function(categoryType, categoryName) {
+    currentOpenCategory = categoryType;
+    await window.loadRecipeCategory(categoryType, categoryName);
     
     document.querySelector('.recipes-categories').style.display = 'none';
     document.querySelector('.header').style.display = 'none';
@@ -170,7 +170,7 @@ function closeRecipesList() {
 }
 
 // Завантаження рецептів категорії
-window.loadRecipeCategory = async function(file, categoryName) {
+window.loadRecipeCategory = async function(categoryType, categoryName) {
     const recipesList = document.getElementById('recipesList');
     const recipeDetail = document.getElementById('recipeDetail');
     
@@ -184,19 +184,41 @@ window.loadRecipeCategory = async function(file, categoryName) {
     `;
     
     try {
-        if (recipesCache[file]) {
-            renderRecipesList(recipesCache[file], categoryName);
-            return;
+        // Знаходимо категорію
+        const category = recipeCategories.find(cat => cat.type === categoryType);
+        if (!category || !category.files) {
+            throw new Error('Категорія не знайдена');
         }
         
-        const response = await fetch(file);
-        if (!response.ok) {
-            throw new Error('Не вдалося завантажити рецепти');
+        // Завантажуємо всі файли цієї категорії
+        const allCategoryRecipes = [];
+        
+        for (const file of category.files) {
+            // Перевіряємо кеш
+            if (!recipesCache[file]) {
+                const response = await fetch(file);
+                if (!response.ok) {
+                    console.error(`Не вдалося завантажити ${file}`);
+                    continue;
+                }
+                const data = await response.json();
+                recipesCache[file] = data;
+            }
+            
+            // Додаємо рецепти до загального списку
+            const data = recipesCache[file];
+            allCategoryRecipes.push(...data.recipes);
         }
         
-        const data = await response.json();
-        recipesCache[file] = data;
-        renderRecipesList(data, categoryName);
+        if (allCategoryRecipes.length === 0) {
+            throw new Error('Немає рецептів у цій категорії');
+        }
+        
+        renderRecipesList({
+            recipes: allCategoryRecipes,
+            icon: category.icon,
+            category: category.name
+        }, categoryName);
         
     } catch (error) {
         console.error('Помилка завантаження рецептів:', error);
@@ -206,7 +228,7 @@ window.loadRecipeCategory = async function(file, categoryName) {
                     <path d="M13,13H11V7H13M13,17H11V15H13M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z"/>
                 </svg>
                 <p>Не вдалося завантажити рецепти</p>
-                <button onclick="window.loadRecipeCategory('${file}', '${categoryName}')" class="retry-btn">
+                <button onclick="window.loadRecipeCategory('${categoryType}', '${categoryName}')" class="retry-btn">
                     Спробувати ще раз
                 </button>
             </div>
@@ -266,10 +288,13 @@ window.showRecipeDetail = function(categoryName, recipeId) {
     const recipesList = document.getElementById('recipesList');
     
     let recipe = null;
+    
+    // Шукаємо рецепт в усіх завантажених файлах
     for (const file in recipesCache) {
         const data = recipesCache[file];
-        if (data.category === categoryName) {
-            recipe = data.recipes.find(r => r.id === recipeId);
+        const foundRecipe = data.recipes.find(r => r.id === recipeId);
+        if (foundRecipe) {
+            recipe = foundRecipe;
             break;
         }
     }
@@ -346,20 +371,24 @@ async function loadAllRecipesForSearch() {
     allRecipes = [];
     
     for (const category of recipeCategories) {
-        try {
-            const response = await fetch(category.file);
-            if (response.ok) {
-                const data = await response.json();
-                const recipesWithCategory = data.recipes.map(recipe => ({
-                    ...recipe,
-                    category: data.category,
-                    categoryIcon: data.icon
-                }));
-                allRecipes = allRecipes.concat(recipesWithCategory);
-                recipesCache[category.file] = data;
+        if (!category.files) continue;
+        
+        for (const file of category.files) {
+            try {
+                const response = await fetch(file);
+                if (response.ok) {
+                    const data = await response.json();
+                    const recipesWithCategory = data.recipes.map(recipe => ({
+                        ...recipe,
+                        category: category.name,
+                        categoryIcon: category.icon
+                    }));
+                    allRecipes = allRecipes.concat(recipesWithCategory);
+                    recipesCache[file] = data;
+                }
+            } catch (error) {
+                console.error(`Помилка завантаження ${file}:`, error);
             }
-        } catch (error) {
-            console.error(`Помилка завантаження ${category.file}:`, error);
         }
     }
     
