@@ -5,7 +5,7 @@ let currentApiKeyIndex = 0;
 let chatHistory = [];
 let conversationContext = null;
 let JARVIS_PROMPT = null;
-let currentChatUser = null; // Додано для відстеження користувача чату
+let currentChatUser = null;
 
 // Завантаження промпту для поточного користувача
 async function loadUserPrompt() {
@@ -13,7 +13,119 @@ async function loadUserPrompt() {
         const currentUser = window.currentUser ? window.currentUser() : null;
         if (!currentUser) {
             console.error('❌ Користувач не авторизований');
-            return executedCommands;
+            return false;
+        }
+
+        const username = currentUser.username || 'Анонім';
+        currentChatUser = username;
+        
+        // Отримуємо API ключ індекс для користувача
+        if (typeof window.getUserApiKeyIndex === 'function') {
+            currentApiKeyIndex = window.getUserApiKeyIndex(username);
+            console.log(`🔑 Користувач ${username} використовує API ключ #${currentApiKeyIndex}`);
+        }
+        
+        // Завантажуємо промпт з API
+        const response = await fetch(`/api/prompts?username=${encodeURIComponent(username)}`);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        JARVIS_PROMPT = data.prompt;
+        
+        console.log('✅ Промпт завантажено для користувача:', username);
+        console.log('📝 Промпт містить:', JARVIS_PROMPT.substring(0, 200) + '...');
+        return true;
+    } catch (error) {
+        console.error('❌ Помилка завантаження промпту:', error);
+        
+        // Fallback промпт
+        JARVIS_PROMPT = `Ти - Джарвіс, AI-асистент системи Halloween Planner.
+        
+Допомагай користувачам з організацією меню, покупок, завдань та розкладу.
+Будь ввічливим, корисним та конкретним у відповідях.`;
+        
+        return false;
+    }
+}
+
+// Отримання поточних даних з сайту
+function getCurrentSiteData() {
+    const supplies = window.suppliesStatus || {};
+    const shoppingList = window.shoppingList || {};
+    const weeklyMenu = window.weeklyMenu || {};
+    const dailySchedule = window.dailySchedule || [];
+    const tasks = window.tasks || [];
+    
+    const formattedData = {
+        'Запаси (продукти вдома)': formatSupplies(supplies),
+        'Список покупок': formatShoppingList(shoppingList),
+        'Меню на тиждень': formatWeeklyMenu(weeklyMenu),
+        'Розпорядок дня': formatDailySchedule(dailySchedule),
+        'Завдання': formatTasks(tasks)
+    };
+    
+    return JSON.stringify(formattedData, null, 2);
+}
+
+// Форматування запасів
+function formatSupplies(supplies) {
+    if (!supplies || Object.keys(supplies).length === 0) return "Немає даних про запаси";
+    
+    const result = { '✅ Є в наявності': [], '⚠️ Закінчується': [], '❌ Відсутнє': [] };
+    
+    for (const [category, items] of Object.entries(supplies)) {
+        if (!items || typeof items !== 'object') continue;
+        
+        for (const [item, status] of Object.entries(items)) {
+            if (!status) continue;
+            if (status === '✅' || status === 'available') result['✅ Є в наявності'].push(item);
+            else if (status === '⚠️' || status === 'low') result['⚠️ Закінчується'].push(item);
+            else if (status === '❌' || status === 'needed') result['❌ Відсутнє'].push(item);
+        }
+    }
+    
+    return Object.keys(result).some(k => result[k].length > 0) ? result : "Запаси не позначені";
+}
+
+// Форматування списку покупок
+function formatShoppingList(shoppingList) {
+    if (!shoppingList || Object.keys(shoppingList).length === 0) return "Список покупок порожній";
+    
+    const result = {};
+    for (const [category, items] of Object.entries(shoppingList)) {
+        if (!items || !Array.isArray(items)) continue;
+        const notBought = items.filter(item => !item.bought).map(item => item.name);
+        if (notBought.length > 0) result[category] = notBought;
+    }
+    
+    return Object.keys(result).length > 0 ? result : "Список покупок порожній";
+}
+
+// Форматування меню
+function formatWeeklyMenu(menu) {
+    if (!menu || Object.keys(menu).length === 0) return "Меню не заповнене";
+    const result = {};
+    for (const [day, meals] of Object.entries(menu)) {
+        if (Object.keys(meals).length > 0) result[day] = meals;
+    }
+    return Object.keys(result).length > 0 ? result : "Меню не заповнене";
+}
+
+// Форматування розкладу дня
+function formatDailySchedule(schedule) {
+    return !schedule || schedule.length === 0 ? "Розклад порожній" : schedule.map(e => `${e.time}: ${e.text}`);
+}
+
+// Форматування завдань
+function formatTasks(tasks) {
+    return !tasks || tasks.length === 0 ? "Завдання відсутні" : tasks.map(t => ({
+        'Завдання': t.text,
+        'Відповідальний': t.assignee,
+        'Статус': t.completed ? 'Виконано' : 'В процесі'
+    }));
 }
 
 // Мапінг категорій для запасів
@@ -202,126 +314,95 @@ function refreshTasksData() {
     return `🎯 ЗАВДАННЯ:\n${JSON.stringify(formatTasks(tasks), null, 2)}`;
 }
 
-// Експорт функцій
-window.sendMessage = sendMessage;
-window.handleKeyPress = handleKeyPress;
-window.clearChat = clearChat;
-window.initChat = initChat;
-window.updateJarvisContext = updateContext;
-
-console.log('✅ Джарвіс з персональними чатами та правильним промптом завантажено'); false;
+// ВИКОНАННЯ КОМАНД
+function executeCommands(text) {
+    const executedCommands = [];
+    const lines = text.split('\n');
+    
+    for (const line of lines) {
+        const trimmed = line.trim();
+        
+        // КОМАНДИ ПЕРЕГЛЯДУ ДАНИХ
+        if (trimmed.startsWith('ПЕРЕГЛЯНУТИ_ЗАПАСИ')) {
+            const freshData = refreshSuppliesData();
+            executedCommands.push({ original: line, type: 'ПЕРЕГЛЯНУТИ_ЗАПАСИ', data: freshData });
         }
-
-        const username = currentUser.username || 'Анонім';
-        currentChatUser = username; // Зберігаємо поточного користувача
-        
-        // Отримуємо API ключ індекс для користувача
-        if (typeof window.getUserApiKeyIndex === 'function') {
-            currentApiKeyIndex = window.getUserApiKeyIndex(username);
-            console.log(`🔑 Користувач ${username} використовує API ключ #${currentApiKeyIndex}`);
+        else if (trimmed.startsWith('ПЕРЕГЛЯНУТИ_ПОКУПКИ')) {
+            const freshData = refreshShoppingData();
+            executedCommands.push({ original: line, type: 'ПЕРЕГЛЯНУТИ_ПОКУПКИ', data: freshData });
         }
-        
-        // Завантажуємо промпт з API
-        const response = await fetch(`/api/prompts?username=${encodeURIComponent(username)}`);
-        
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+        else if (trimmed.startsWith('ПЕРЕГЛЯНУТИ_МЕНЮ')) {
+            const freshData = refreshMenuData();
+            executedCommands.push({ original: line, type: 'ПЕРЕГЛЯНУТИ_МЕНЮ', data: freshData });
         }
-
-        const data = await response.json();
-        JARVIS_PROMPT = data.prompt;
-        
-        console.log('✅ Промпт завантажено для користувача:', username);
-        console.log('📝 Промпт містить:', JARVIS_PROMPT.substring(0, 200) + '...');
-        return true;
-    } catch (error) {
-        console.error('❌ Помилка завантаження промпту:', error);
-        
-        // Fallback промпт
-        JARVIS_PROMPT = `Ти - Джарвіс, AI-асистент системи Halloween Planner.
-        
-Допомагай користувачам з організацією меню, покупок, завдань та розкладу.
-Будь ввічливим, корисним та конкретним у відповідях.`;
-        
-        return false;
-    }
-}
-
-// Отримання поточних даних з сайту
-function getCurrentSiteData() {
-    const supplies = window.suppliesStatus || {};
-    const shoppingList = window.shoppingList || {};
-    const weeklyMenu = window.weeklyMenu || {};
-    const dailySchedule = window.dailySchedule || [];
-    const tasks = window.tasks || [];
-    
-    const formattedData = {
-        'Запаси (продукти вдома)': formatSupplies(supplies),
-        'Список покупок': formatShoppingList(shoppingList),
-        'Меню на тиждень': formatWeeklyMenu(weeklyMenu),
-        'Розпорядок дня': formatDailySchedule(dailySchedule),
-        'Завдання': formatTasks(tasks)
-    };
-    
-    return JSON.stringify(formattedData, null, 2);
-}
-
-// Форматування запасів
-function formatSupplies(supplies) {
-    if (!supplies || Object.keys(supplies).length === 0) return "Немає даних про запаси";
-    
-    const result = { '✅ Є в наявності': [], '⚠️ Закінчується': [], '❌ Відсутнє': [] };
-    
-    for (const [category, items] of Object.entries(supplies)) {
-        if (!items || typeof items !== 'object') continue;
-        
-        for (const [item, status] of Object.entries(items)) {
-            if (!status) continue;
-            if (status === '✅' || status === 'available') result['✅ Є в наявності'].push(item);
-            else if (status === '⚠️' || status === 'low') result['⚠️ Закінчується'].push(item);
-            else if (status === '❌' || status === 'needed') result['❌ Відсутнє'].push(item);
+        else if (trimmed.startsWith('ПЕРЕГЛЯНУТИ_РОЗКЛАД')) {
+            const freshData = refreshScheduleData();
+            executedCommands.push({ original: line, type: 'ПЕРЕГЛЯНУТИ_РОЗКЛАД', data: freshData });
         }
-    }
-    
-    return Object.keys(result).some(k => result[k].length > 0) ? result : "Запаси не позначені";
-}
-
-// Форматування списку покупок
-function formatShoppingList(shoppingList) {
-    if (!shoppingList || Object.keys(shoppingList).length === 0) return "Список покупок порожній";
-    
-    const result = {};
-    for (const [category, items] of Object.entries(shoppingList)) {
-        if (!items || !Array.isArray(items)) continue;
-        const notBought = items.filter(item => !item.bought).map(item => item.name);
-        if (notBought.length > 0) result[category] = notBought;
+        else if (trimmed.startsWith('ПЕРЕГЛЯНУТИ_ЗАВДАННЯ')) {
+            const freshData = refreshTasksData();
+            executedCommands.push({ original: line, type: 'ПЕРЕГЛЯНУТИ_ЗАВДАННЯ', data: freshData });
+        }
+        else if (trimmed.startsWith('ПЕРЕГЛЯНУТИ_ВСЕ')) {
+            const freshData = getCurrentSiteData();
+            executedCommands.push({ original: line, type: 'ПЕРЕГЛЯНУТИ_ВСЕ', data: freshData });
+        }
+        // КОМАНДИ МОДИФІКАЦІЇ
+        else if (trimmed.startsWith('ДОДАТИ_ЗАПАС:')) {
+            const params = trimmed.replace('ДОДАТИ_ЗАПАС:', '').trim().split(',').map(p => p.trim());
+            if (params.length === 2) {
+                executeAddSupply(params[0], params[1]);
+                executedCommands.push({ original: line, type: 'ДОДАТИ_ЗАПАС' });
+            }
+        }
+        else if (trimmed.startsWith('ДОДАТИ_ПОКУПКУ:')) {
+            const params = trimmed.replace('ДОДАТИ_ПОКУПКУ:', '').trim().split(',').map(p => p.trim());
+            if (params.length === 2) {
+                executeAddShopping(params[0], params[1]);
+                executedCommands.push({ original: line, type: 'ДОДАТИ_ПОКУПКУ' });
+            }
+        }
+        else if (trimmed.startsWith('ВИДАЛИТИ_ПОКУПКУ:')) {
+            const product = trimmed.replace('ВИДАЛИТИ_ПОКУПКУ:', '').trim();
+            executeRemoveShopping(product);
+            executedCommands.push({ original: line, type: 'ВИДАЛИТИ_ПОКУПКУ' });
+        }
+        else if (trimmed.startsWith('ДОДАТИ_МЕНЮ:')) {
+            const params = trimmed.replace('ДОДАТИ_МЕНЮ:', '').trim().split(',').map(p => p.trim());
+            if (params.length === 3) {
+                executeAddMenu(params[0], params[1], params[2]);
+                executedCommands.push({ original: line, type: 'ДОДАТИ_МЕНЮ' });
+            }
+        }
+        else if (trimmed.startsWith('ВИДАЛИТИ_МЕНЮ:')) {
+            const params = trimmed.replace('ВИДАЛИТИ_МЕНЮ:', '').trim().split(',').map(p => p.trim());
+            if (params.length === 2) {
+                executeRemoveMenu(params[0], params[1]);
+                executedCommands.push({ original: line, type: 'ВИДАЛИТИ_МЕНЮ' });
+            }
+        }
+        else if (trimmed.startsWith('ДОДАТИ_РОЗКЛАД:')) {
+            const params = trimmed.replace('ДОДАТИ_РОЗКЛАД:', '').trim().split(',').map(p => p.trim());
+            if (params.length === 2) {
+                executeAddSchedule(params[0], params[1]);
+                executedCommands.push({ original: line, type: 'ДОДАТИ_РОЗКЛАД' });
+            }
+        }
+        else if (trimmed.startsWith('ВИДАЛИТИ_РОЗКЛАД:')) {
+            const time = trimmed.replace('ВИДАЛИТИ_РОЗКЛАД:', '').trim();
+            executeRemoveSchedule(time);
+            executedCommands.push({ original: line, type: 'ВИДАЛИТИ_РОЗКЛАД' });
+        }
+        else if (trimmed.startsWith('ДОДАТИ_ЗАВДАННЯ:')) {
+            const params = trimmed.replace('ДОДАТИ_ЗАВДАННЯ:', '').trim().split(',').map(p => p.trim());
+            if (params.length === 2) {
+                executeAddTask(params[0], params[1]);
+                executedCommands.push({ original: line, type: 'ДОДАТИ_ЗАВДАННЯ' });
+            }
+        }
     }
     
-    return Object.keys(result).length > 0 ? result : "Список покупок порожній";
-}
-
-// Форматування меню
-function formatWeeklyMenu(menu) {
-    if (!menu || Object.keys(menu).length === 0) return "Меню не заповнене";
-    const result = {};
-    for (const [day, meals] of Object.entries(menu)) {
-        if (Object.keys(meals).length > 0) result[day] = meals;
-    }
-    return Object.keys(result).length > 0 ? result : "Меню не заповнене";
-}
-
-// Форматування розкладу дня
-function formatDailySchedule(schedule) {
-    return !schedule || schedule.length === 0 ? "Розклад порожній" : schedule.map(e => `${e.time}: ${e.text}`);
-}
-
-// Форматування завдань
-function formatTasks(tasks) {
-    return !tasks || tasks.length === 0 ? "Завдання відсутні" : tasks.map(t => ({
-        'Завдання': t.text,
-        'Відповідальний': t.assignee,
-        'Статус': t.completed ? 'Виконано' : 'В процесі'
-    }));
+    return executedCommands;
 }
 
 // Відправка повідомлення до Gemini AI через Vercel
@@ -764,92 +845,11 @@ function updateContext() {
     console.log('✅ Контекст Джарвіса оновлено');
 }
 
-// ВИКОНАННЯ КОМАНД
-function executeCommands(text) {
-    const executedCommands = [];
-    const lines = text.split('\n');
-    
-    for (const line of lines) {
-        const trimmed = line.trim();
-        
-        // КОМАНДИ ПЕРЕГЛЯДУ ДАНИХ
-        if (trimmed.startsWith('ПЕРЕГЛЯНУТИ_ЗАПАСИ')) {
-            const freshData = refreshSuppliesData();
-            executedCommands.push({ original: line, type: 'ПЕРЕГЛЯНУТИ_ЗАПАСИ', data: freshData });
-        }
-        else if (trimmed.startsWith('ПЕРЕГЛЯНУТИ_ПОКУПКИ')) {
-            const freshData = refreshShoppingData();
-            executedCommands.push({ original: line, type: 'ПЕРЕГЛЯНУТИ_ПОКУПКИ', data: freshData });
-        }
-        else if (trimmed.startsWith('ПЕРЕГЛЯНУТИ_МЕНЮ')) {
-            const freshData = refreshMenuData();
-            executedCommands.push({ original: line, type: 'ПЕРЕГЛЯНУТИ_МЕНЮ', data: freshData });
-        }
-        else if (trimmed.startsWith('ПЕРЕГЛЯНУТИ_РОЗКЛАД')) {
-            const freshData = refreshScheduleData();
-            executedCommands.push({ original: line, type: 'ПЕРЕГЛЯНУТИ_РОЗКЛАД', data: freshData });
-        }
-        else if (trimmed.startsWith('ПЕРЕГЛЯНУТИ_ЗАВДАННЯ')) {
-            const freshData = refreshTasksData();
-            executedCommands.push({ original: line, type: 'ПЕРЕГЛЯНУТИ_ЗАВДАННЯ', data: freshData });
-        }
-        else if (trimmed.startsWith('ПЕРЕГЛЯНУТИ_ВСЕ')) {
-            const freshData = getCurrentSiteData();
-            executedCommands.push({ original: line, type: 'ПЕРЕГЛЯНУТИ_ВСЕ', data: freshData });
-        }
-        // КОМАНДИ МОДИФІКАЦІЇ
-        else if (trimmed.startsWith('ДОДАТИ_ЗАПАС:')) {
-            const params = trimmed.replace('ДОДАТИ_ЗАПАС:', '').trim().split(',').map(p => p.trim());
-            if (params.length === 2) {
-                executeAddSupply(params[0], params[1]);
-                executedCommands.push({ original: line, type: 'ДОДАТИ_ЗАПАС' });
-            }
-        }
-        else if (trimmed.startsWith('ДОДАТИ_ПОКУПКУ:')) {
-            const params = trimmed.replace('ДОДАТИ_ПОКУПКУ:', '').trim().split(',').map(p => p.trim());
-            if (params.length === 2) {
-                executeAddShopping(params[0], params[1]);
-                executedCommands.push({ original: line, type: 'ДОДАТИ_ПОКУПКУ' });
-            }
-        }
-        else if (trimmed.startsWith('ВИДАЛИТИ_ПОКУПКУ:')) {
-            const product = trimmed.replace('ВИДАЛИТИ_ПОКУПКУ:', '').trim();
-            executeRemoveShopping(product);
-            executedCommands.push({ original: line, type: 'ВИДАЛИТИ_ПОКУПКУ' });
-        }
-        else if (trimmed.startsWith('ДОДАТИ_МЕНЮ:')) {
-            const params = trimmed.replace('ДОДАТИ_МЕНЮ:', '').trim().split(',').map(p => p.trim());
-            if (params.length === 3) {
-                executeAddMenu(params[0], params[1], params[2]);
-                executedCommands.push({ original: line, type: 'ДОДАТИ_МЕНЮ' });
-            }
-        }
-        else if (trimmed.startsWith('ВИДАЛИТИ_МЕНЮ:')) {
-            const params = trimmed.replace('ВИДАЛИТИ_МЕНЮ:', '').trim().split(',').map(p => p.trim());
-            if (params.length === 2) {
-                executeRemoveMenu(params[0], params[1]);
-                executedCommands.push({ original: line, type: 'ВИДАЛИТИ_МЕНЮ' });
-            }
-        }
-        else if (trimmed.startsWith('ДОДАТИ_РОЗКЛАД:')) {
-            const params = trimmed.replace('ДОДАТИ_РОЗКЛАД:', '').trim().split(',').map(p => p.trim());
-            if (params.length === 2) {
-                executeAddSchedule(params[0], params[1]);
-                executedCommands.push({ original: line, type: 'ДОДАТИ_РОЗКЛАД' });
-            }
-        }
-        else if (trimmed.startsWith('ВИДАЛИТИ_РОЗКЛАД:')) {
-            const time = trimmed.replace('ВИДАЛИТИ_РОЗКЛАД:', '').trim();
-            executeRemoveSchedule(time);
-            executedCommands.push({ original: line, type: 'ВИДАЛИТИ_РОЗКЛАД' });
-        }
-        else if (trimmed.startsWith('ДОДАТИ_ЗАВДАННЯ:')) {
-            const params = trimmed.replace('ДОДАТИ_ЗАВДАННЯ:', '').trim().split(',').map(p => p.trim());
-            if (params.length === 2) {
-                executeAddTask(params[0], params[1]);
-                executedCommands.push({ original: line, type: 'ДОДАТИ_ЗАВДАННЯ' });
-            }
-        }
-    }
-    
-    return
+// Експорт функцій
+window.sendMessage = sendMessage;
+window.handleKeyPress = handleKeyPress;
+window.clearChat = clearChat;
+window.initChat = initChat;
+window.updateJarvisContext = updateContext;
+
+console.log('✅ Джарвіс з персональними чатами та правильним промптом завантажено');
