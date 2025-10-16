@@ -88,25 +88,64 @@
 
 .supply-category:hover {
     box-shadow: 0 8px 25px rgba(0, 0, 0, 0.7);
-    transform: translateY(-3px);
+}
+
+.supply-category.open {
+    transform: translateY(0);
+}
+
+.supply-category.closed {
+    transform: translateY(0);
 }
 
 .supply-category-header {
     padding-bottom: 15px;
     margin-bottom: 15px;
     border-bottom: 2px solid #cc5500;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    user-select: none;
+    transition: all 0.2s ease;
+}
+
+.supply-category-header:hover {
+    background: rgba(204, 85, 0, 0.1);
+    padding-left: 10px;
+    padding-right: 10px;
+    margin-left: -10px;
+    margin-right: -10px;
+    border-radius: 8px;
 }
 
 .supply-category-header h3 {
     color: #d0d0d0;
     font-size: 1.3em;
     margin: 0;
+    flex: 1;
+}
+
+.toggle-icon {
+    color: #cc5500;
+    font-size: 1.2em;
+    transition: transform 0.3s ease;
+    margin-left: 10px;
+}
+
+.supply-category.open .toggle-icon {
+    transform: rotate(0deg);
+}
+
+.supply-category.closed .toggle-icon {
+    transform: rotate(-90deg);
 }
 
 .supply-items {
     display: flex;
     flex-direction: column;
     gap: 10px;
+    transition: all 0.3s ease;
 }
 
 .supply-item {
@@ -171,6 +210,13 @@
 }
 
 /* ===== ACTION BUTTONS STYLES ===== */
+
+.action-buttons-top {
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
+    margin-bottom: 30px;
+}
 
 .action-buttons {
     display: flex;
@@ -268,7 +314,8 @@
         padding: 15px;
     }
     
-    .action-buttons {
+    .action-buttons,
+    .action-buttons-top {
         flex-direction: column;
         gap: 10px;
     }
