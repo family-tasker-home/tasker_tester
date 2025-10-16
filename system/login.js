@@ -1,4 +1,5 @@
 // ===== LOGIN SYSTEM =====
+// Виправлена версія з персональним управлінням чатом
 
 // Поточний користувач
 let currentUser = null;
@@ -282,20 +283,21 @@ function showAppContent() {
                     console.log('✅ Спільні дані автоматично завантажено з Firebase');
                 });
             }
-        }, 1500); // Даємо час на ініціалізацію всіх модулів
+        }, 1500);
     }
 }
 
-// Вихід з системи
+// Вихід з системи (БЕЗ очищення чату)
 window.logout = function() {
     if (confirm('Ви впевнені, що хочете вийти?')) {
+        const previousUser = currentUser ? currentUser.username : null;
+        
         currentUser = null;
         selectedUsername = null;
         localStorage.removeItem('halloween_user');
         
-        // Очищаємо історію чату при виході
-        localStorage.removeItem('jarvis_chat_history');
-        localStorage.removeItem('jarvis_context');
+        // НЕ очищаємо історію чату - вона залишається для кожного користувача
+        console.log(`👋 Користувач ${previousUser} вийшов (історія чату збережена)`);
         
         showLoginForm();
         setTimeout(() => {
@@ -337,4 +339,4 @@ window.canModifyData = canModifyData;
 window.canSaveToFirebase = canSaveToFirebase;
 window.currentUser = () => currentUser;
 
-console.log('✅ Login system завантажено (auto-load version з спільними даними)');
+console.log('✅ Login system завантажено (персональні чати збережені)');
