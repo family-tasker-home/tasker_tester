@@ -9,5 +9,14 @@
             "recepts/vegetarian/macaroni.json",
             "recepts/vegan/macaroni.json"
         ]
+    },
+    {
+        "name": "Гречка",
+        "icon": "🥘",
+        "type": "buckwheat",
+        "files": [
+            "recepts/meat/Buckwheat.json",
+            "recepts/fish/buckwheat.json"
+        ]
     }
 ]
