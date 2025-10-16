@@ -5,6 +5,11 @@ if (typeof window.suppliesStatus === 'undefined') {
     window.suppliesStatus = {};
 }
 
+// Стан відкритих/закритих категорій
+if (typeof window.suppliesCategoriesState === 'undefined') {
+    window.suppliesCategoriesState = {};
+}
+
 // Функція для очищення ключів від заборонених символів Firebase
 function sanitizeFirebaseKey(key) {
     if (typeof key !== 'string') return key;
@@ -65,6 +70,16 @@ function canEditSupplies() {
     return editRoles.includes(role);
 }
 
+// Toggle категорії
+window.toggleSupplyCategory = function(categoryKey) {
+    if (window.suppliesCategoriesState[categoryKey] === undefined) {
+        window.suppliesCategoriesState[categoryKey] = true;
+    }
+    
+    window.suppliesCategoriesState[categoryKey] = !window.suppliesCategoriesState[categoryKey];
+    window.renderSupplies();
+};
+
 // Створення HTML структури секції
 window.createSuppliesSection = function() {
     const section = document.getElementById('supplies-section');
@@ -116,10 +131,20 @@ window.initializeSupplies = function() {
         window.suppliesStatus = {};
     }
     
+    if (!window.suppliesCategoriesState) {
+        window.suppliesCategoriesState = {};
+    }
+    
     Object.keys(suppliesCategories).forEach(categoryKey => {
         if (!window.suppliesStatus[categoryKey]) {
             window.suppliesStatus[categoryKey] = {};
         }
+        
+        // За замовчуванням всі категорії відкриті
+        if (window.suppliesCategoriesState[categoryKey] === undefined) {
+            window.suppliesCategoriesState[categoryKey] = true;
+        }
+        
         suppliesCategories[categoryKey].items.forEach(item => {
             if (window.suppliesStatus[categoryKey][item] === undefined) {
                 window.suppliesStatus[categoryKey][item] = null;
@@ -169,6 +194,7 @@ window.renderSupplies = function() {
     container.innerHTML = Object.keys(suppliesCategories).map(categoryKey => {
         const category = suppliesCategories[categoryKey];
         const items = category.items;
+        const isOpen = window.suppliesCategoriesState[categoryKey] !== false;
         
         const itemsHtml = items.map(item => {
             let status = null;
@@ -207,9 +233,14 @@ window.renderSupplies = function() {
         }).join('');
         
         return `
-            <div class="supply-category">
-                <div class="supply-category-header"><h3>${category.display}</h3></div>
-                <div class="supply-items">${itemsHtml}</div>
+            <div class="supply-category ${isOpen ? 'open' : 'closed'}">
+                <div class="supply-category-header" onclick="window.toggleSupplyCategory('${categoryKey}')">
+                    <h3>${category.display}</h3>
+                    <span class="toggle-icon">${isOpen ? '▼' : '▶'}</span>
+                </div>
+                <div class="supply-items" style="display: ${isOpen ? 'flex' : 'none'};">
+                    ${itemsHtml}
+                </div>
             </div>
         `;
     }).join('');
@@ -396,4 +427,4 @@ window.clearAllChecked = function() {
     }
 };
 
-console.log('✅ Supplies system завантажено (з функцією очищення покупленне в список)');
+console.log('✅ Supplies system завантажено (з функцією toggle категорій)');
