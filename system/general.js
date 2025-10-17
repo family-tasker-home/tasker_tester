@@ -1,6 +1,5 @@
 // ===== GENERAL SITE LOGIC =====
 
-// Створення основного додатку (викликається з login.js після входу)
 window.createMainApp = function(currentUser, USERS) {
     const mainContent = document.getElementById('mainAppContent');
     
@@ -9,7 +8,6 @@ window.createMainApp = function(currentUser, USERS) {
         return;
     }
     
-    // Отримуємо інформацію про роль на сьогодні
     const roleInfo = window.getTodayRoleInfo ? window.getTodayRoleInfo(currentUser.username) : { role: currentUser.role };
     const todayRole = roleInfo.role || currentUser.role;
     const canModify = todayRole !== "Viewer";
@@ -55,7 +53,6 @@ window.createMainApp = function(currentUser, USERS) {
                     <span>Помічник</span>
                 </button>
                 
-                <!-- Global Actions -->
                 <div class="global-actions">
                     <button class="global-actions-logout" onclick="window.logout()">
                         <span>🚪</span>
@@ -63,10 +60,6 @@ window.createMainApp = function(currentUser, USERS) {
                     </button>
                 </div>
             </nav>
-            <div class="sidebar-footer">
-                <p>👻 Spooky Planning 👻</p>
-                <p style="font-size: 0.8em; opacity: 0.7; margin-top: 5px;">Дані автоматично зберігаються</p>
-            </div>
         </div>
 
         <!-- Menu Toggle Button -->
@@ -86,13 +79,10 @@ window.createMainApp = function(currentUser, USERS) {
         </div>
     `;
     
-    // Ініціалізуємо додаток
     initializeApp(currentUser, USERS);
 };
 
-// Ініціалізація основного додатку
 function initializeApp(currentUser, USERS) {
-    // Ініціалізація порожніх структур даних
     if (typeof window.dailySchedule === 'undefined') window.dailySchedule = [];
     if (typeof window.tasks === 'undefined') window.tasks = [];
     if (typeof window.weeklyMenu === 'undefined') {
@@ -109,7 +99,6 @@ function initializeApp(currentUser, USERS) {
     if (typeof window.suppliesStatus === 'undefined') window.suppliesStatus = {};
     if (typeof window.shoppingList === 'undefined') window.shoppingList = {};
     
-    // Створення HTML секцій
     if (typeof window.createDailySection === 'function') window.createDailySection();
     if (typeof window.createTasksSection === 'function') window.createTasksSection();
     if (typeof window.createMenuSection === 'function') window.createMenuSection();
@@ -117,21 +106,17 @@ function initializeApp(currentUser, USERS) {
     if (typeof window.createSuppliesSection === 'function') window.createSuppliesSection();
     if (typeof window.createShopSection === 'function') window.createShopSection();
     
-    // Створення секції помічника (для ВСІХ користувачів)
     createAssistantSection(currentUser, USERS);
     
-    // Ініціалізація запасів
     if (typeof window.initializeSupplies === 'function') {
         window.initializeSupplies();
         console.log('✅ Supplies ініціалізовано');
     }
     
-    // Завантаження даних з кешу
     if (typeof window.loadFromCache === 'function') {
         window.loadFromCache();
     }
     
-    // Рендер інтерфейсів
     setTimeout(() => {
         if (typeof window.renderDailySchedule === 'function') window.renderDailySchedule();
         if (typeof window.renderTasks === 'function') window.renderTasks();
@@ -142,7 +127,6 @@ function initializeApp(currentUser, USERS) {
         console.log('✅ Всі рендер-функції виконано');
     }, 100);
 
-    // Обробка зміни розміру вікна
     window.addEventListener('resize', function() {
         const sidebar = document.getElementById('sidebar');
         
@@ -154,7 +138,6 @@ function initializeApp(currentUser, USERS) {
         }
     });
 
-    // Початковий стан для мобільних
     if (window.innerWidth <= 768) {
         const sidebar = document.getElementById('sidebar');
         sidebar.classList.add('hidden');
@@ -163,12 +146,10 @@ function initializeApp(currentUser, USERS) {
     console.log('✅ Кухонний Планувальник готовий до роботи!');
 }
 
-// Створення секції помічника (доступна для ВСІХ)
 function createAssistantSection(currentUser, USERS) {
     const assistantSection = document.getElementById('assistant-section');
     if (!assistantSection) return;
     
-    // Отримуємо аватар користувача
     const userAvatar = currentUser.avatar || '👤';
     const userName = currentUser.name || 'Користувач';
     
@@ -182,6 +163,59 @@ function createAssistantSection(currentUser, USERS) {
                     </div>
                 </div>
                 <div class="chat-messages" id="chatMessages"></div>
+                
+                <!-- Voice Chat Panel -->
+                <div class="voice-chat-panel">
+                    <div class="voice-panel-header">
+                        <div class="voice-panel-title">
+                            <span class="icon">🎤</span>
+                            <span>Голосовий режим</span>
+                        </div>
+                        <button class="voice-stop-btn" onclick="window.stopVoiceChat()">
+                            🛑 Зупинити
+                        </button>
+                    </div>
+                    
+                    <div class="voice-status">
+                        <div class="recording-indicator">
+                            <div class="recording-dot"></div>
+                            <span class="recording-text">ЗАПИС...</span>
+                        </div>
+                        <div class="voice-status-text">Говоріть зараз (макс. 30 сек)</div>
+                        
+                        <div class="voice-level-indicator">
+                            <div class="voice-bar"></div>
+                            <div class="voice-bar"></div>
+                            <div class="voice-bar"></div>
+                            <div class="voice-bar"></div>
+                            <div class="voice-bar"></div>
+                            <div class="voice-bar"></div>
+                            <div class="voice-bar"></div>
+                            <div class="voice-bar"></div>
+                            <div class="voice-bar"></div>
+                            <div class="voice-bar"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="voice-processing">
+                        <div class="voice-processing-spinner"></div>
+                        <div class="voice-processing-text">Обробка вашого голосу...</div>
+                    </div>
+                    
+                    <div class="voice-instructions">
+                        <strong>💡 Підказки:</strong><br>
+                        • Говоріть чітко та не дуже швидко<br>
+                        • Уникайте фонового шуму<br>
+                        • Розмовляйте природньо, як з людиною<br>
+                        • Можете давати команди ("додай запас", "що в меню")
+                    </div>
+                    
+                    <div class="voice-api-info">
+                        <span class="icon">🔑</span>
+                        <span>Використовуються виділені ключі для голосу (API #6-10)</span>
+                    </div>
+                </div>
+                
                 <div class="chat-input-container">
                     <div class="chat-input-wrapper">
                         <textarea 
@@ -191,6 +225,11 @@ function createAssistantSection(currentUser, USERS) {
                             onkeypress="window.handleKeyPress(event)"
                             rows="1"
                         ></textarea>
+                        
+                        <button class="voice-chat-btn" onclick="window.toggleVoiceChat()" title="Голосовий чат">
+                            🎤
+                        </button>
+                        
                         <button class="chat-send-btn" onclick="window.sendMessage()">
                             <span>📤</span>
                         </button>
@@ -208,20 +247,29 @@ function createAssistantSection(currentUser, USERS) {
         </div>
     `;
     
-    // Ініціалізуємо чат
     if (typeof window.initChat === 'function') {
         window.initChat();
     }
+    
+    if (typeof window.initVoiceSystem === 'function') {
+        window.initVoiceSystem();
+    }
 }
 
-// Перемикання sidebar
+window.toggleVoiceChat = function() {
+    if (typeof isVoiceActive !== 'undefined' && isVoiceActive) {
+        window.stopVoiceChat();
+    } else {
+        window.startVoiceChat();
+    }
+};
+
 window.toggleSidebar = function() {
     const sidebar = document.getElementById('sidebar');
     sidebar.classList.toggle('visible');
     sidebar.classList.toggle('hidden');
 };
 
-// Показ секції
 window.showSection = function(sectionName) {
     const sections = document.querySelectorAll('.section');
     sections.forEach(section => section.classList.remove('active'));
@@ -245,7 +293,6 @@ window.showSection = function(sectionName) {
     }
 };
 
-// Оновлені функції для перевірки прав доступу
 window.checkSavePermissions = function() {
     if (!window.canSaveToFirebase()) {
         const currentUser = window.currentUser ? window.currentUser() : null;
@@ -274,10 +321,8 @@ window.checkModifyPermissions = function() {
     return true;
 };
 
-// Ініціалізація при завантаженні сторінки
 document.addEventListener('DOMContentLoaded', function() {
     console.log('🎃 Кухонний Планувальник завантажується...');
-    // Ініціалізація тепер керується системою автентифікації
 });
 
-console.log('✅ General system завантажено');
+console.log('✅ General system завантажено з голосовою панеллю');
