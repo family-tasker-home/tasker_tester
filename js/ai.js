@@ -889,7 +889,133 @@ function updateContext() {
     conversationContext = getCurrentSiteData();
     console.log('✅ Контекст Джарвіса оновлено');
 }
+function createAssistantSection(currentUser, USERS) {
+    const assistantSection = document.getElementById('assistant-section');
+    if (!assistantSection) return;
+    
+    const userAvatar = currentUser.avatar || '👤';
+    const userName = currentUser.name || 'Користувач';
+    
+    assistantSection.innerHTML = `
+        <div id="assistant-content">
+            <div class="chat-container">
+                <div class="chat-header">
+                    <h2><span class="jarvis-icon">🤖</span> Джарвіс - Кухонний Асистент</h2>
+                    <div class="chat-user-info">
+                        <span>Профіль: ${userAvatar} ${userName}</span>
+                    </div>
+                </div>
+                <div class="chat-messages" id="chatMessages"></div>
+                
+                <!-- Voice Chat Panel -->
+                <div class="voice-chat-panel">
+                    <div class="voice-panel-header">
+                        <div class="voice-panel-title">
+                            <span class="icon">🎤</span>
+                            <span>Голосовий режим</span>
+                        </div>
+                        <button class="voice-stop-btn" onclick="window.stopVoiceChat()">
+                            🛑 Зупинити
+                        </button>
+                    </div>
+                    
+                    <div class="voice-status">
+                        <div class="recording-indicator">
+                            <div class="recording-dot"></div>
+                            <span class="recording-text">ЗАПИС...</span>
+                        </div>
+                        <div class="voice-status-text">Говоріть зараз (макс. 30 сек)</div>
+                        
+                        <!-- Audio Level Indicator -->
+                        <div class="voice-level-indicator">
+                            <div class="voice-bar"></div>
+                            <div class="voice-bar"></div>
+                            <div class="voice-bar"></div>
+                            <div class="voice-bar"></div>
+                            <div class="voice-bar"></div>
+                            <div class="voice-bar"></div>
+                            <div class="voice-bar"></div>
+                            <div class="voice-bar"></div>
+                            <div class="voice-bar"></div>
+                            <div class="voice-bar"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Processing Indicator -->
+                    <div class="voice-processing">
+                        <div class="voice-processing-spinner"></div>
+                        <div class="voice-processing-text">Обробка вашого голосу...</div>
+                    </div>
+                    
+                    <!-- Voice Instructions -->
+                    <div class="voice-instructions">
+                        <strong>💡 Підказки:</strong><br>
+                        • Говоріть чітко та не дуже швидко<br>
+                        • Уникайте фонового шуму<br>
+                        • Розмовляйте природньо, як з людиною<br>
+                        • Можете давати команди ("додай запас", "що в меню")
+                    </div>
+                    
+                    <div class="voice-api-info">
+                        <span class="icon">🔑</span>
+                        <span>Використовуються виділені ключі для голосу (API #6-10)</span>
+                    </div>
+                </div>
+                
+                <div class="chat-input-container">
+                    <div class="chat-input-wrapper">
+                        <textarea 
+                            id="chatInput" 
+                            class="chat-input" 
+                            placeholder="Напишіть повідомлення Джарвісу..."
+                            onkeypress="window.handleKeyPress(event)"
+                            rows="1"
+                        ></textarea>
+                        
+                        <!-- Voice Chat Button -->
+                        <button class="voice-chat-btn" onclick="window.toggleVoiceChat()" title="Голосовий чат">
+                            🎤
+                        </button>
+                        
+                        <button class="chat-send-btn" onclick="window.sendMessage()">
+                            <span>📤</span>
+                        </button>
+                    </div>
+                    <div class="chat-controls">
+                        <button class="chat-clear-btn" onclick="window.clearChat()">
+                            🗑️ Очистити чат
+                        </button>
+                        <div class="chat-status online">
+                            <span>🟢</span> Онлайн
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Ініціалізуємо чат
+    if (typeof window.initChat === 'function') {
+        window.initChat();
+    }
+    
+    // Ініціалізуємо голосову систему
+    if (typeof window.initVoiceSystem === 'function') {
+        window.initVoiceSystem();
+    }
+}
 
+// Функція перемикання голосового чату
+window.toggleVoiceChat = function() {
+    if (isVoiceActive) {
+        window.stopVoiceChat();
+    } else {
+        window.startVoiceChat();
+    }
+};
+
+// Експортуємо оновлену функцію
+window.createAssistantSectionWithVoice = createAssistantSection;
 // Експорт функцій
 window.sendMessage = sendMessage;
 window.handleKeyPress = handleKeyPress;
