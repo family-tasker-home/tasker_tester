@@ -1,7 +1,6 @@
 // ===== VOICE COMMUNICATION SYSTEM =====
 // Голосове спілкування з Джарвісом в реальному часі
 
-// Стан голосового чату
 let isVoiceActive = false;
 let mediaRecorder = null;
 let audioChunks = [];
@@ -10,11 +9,9 @@ let analyser = null;
 let voiceAnimationFrame = null;
 let currentStream = null;
 
-// API ключі для голосового режиму (6-10)
-const VOICE_API_KEY_START = 5; // Індекс 5 = ключ 6
-const VOICE_API_KEY_END = 9;   // Індекс 9 = ключ 10
+const VOICE_API_KEY_START = 5;
+const VOICE_API_KEY_END = 9;
 
-// Отримати випадковий ключ для голосового режиму
 function getVoiceApiKeyIndex() {
     return Math.floor(Math.random() * (VOICE_API_KEY_END - VOICE_API_KEY_START + 1)) + VOICE_API_KEY_START;
 }
@@ -23,15 +20,9 @@ function getVoiceApiKeyIndex() {
 window.initVoiceSystem = function() {
     console.log('🎤 Ініціалізація голосової системи...');
     
-    // Перевірка підтримки браузера
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         console.error('❌ Браузер не підтримує доступ до мікрофона');
         return false;
-    }
-    
-    // Перевірка Web Speech API
-    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-        console.warn('⚠️ Web Speech API не підтримується');
     }
     
     console.log('✅ Голосова система готова');
@@ -48,7 +39,6 @@ window.startVoiceChat = async function() {
     try {
         console.log('🎤 Запуск голосового чату...');
         
-        // Запитуємо доступ до мікрофона
         currentStream = await navigator.mediaDevices.getUserMedia({ 
             audio: {
                 echoCancellation: true,
@@ -57,15 +47,12 @@ window.startVoiceChat = async function() {
             } 
         });
         
-        // Створюємо MediaRecorder
         mediaRecorder = new MediaRecorder(currentStream, {
             mimeType: 'audio/webm;codecs=opus'
         });
         
-        // Налаштовуємо аудіо контекст для візуалізації
         setupAudioVisualization(currentStream);
         
-        // Обробники подій MediaRecorder
         mediaRecorder.ondataavailable = (event) => {
             if (event.data.size > 0) {
                 audioChunks.push(event.data);
@@ -77,23 +64,17 @@ window.startVoiceChat = async function() {
             await processVoiceInput();
         };
         
-        // Оновлюємо UI
         isVoiceActive = true;
         updateVoiceUI(true);
         
-        // Початкове повідомлення від Джарвіса
         await speakText('Привіт! Я вас слухаю. Говоріть після сигналу.');
-        
-        // Короткий сигнал що можна говорити
         playBeep();
         
-        // Запускаємо запис
         audioChunks = [];
         mediaRecorder.start();
         
         console.log('✅ Голосовий чат активовано');
         
-        // Автоматична зупинка через 30 секунд (можна збільшити)
         setTimeout(() => {
             if (isVoiceActive && mediaRecorder && mediaRecorder.state === 'recording') {
                 stopVoiceRecording();
@@ -107,29 +88,24 @@ window.startVoiceChat = async function() {
     }
 };
 
-// Зупинка запису (але не виходу з режиму)
 function stopVoiceRecording() {
     if (mediaRecorder && mediaRecorder.state === 'recording') {
         mediaRecorder.stop();
     }
 }
 
-// Зупинка голосової розмови
 window.stopVoiceChat = function() {
     console.log('🛑 Зупинка голосового чату...');
     
-    // Зупиняємо запис
     if (mediaRecorder && mediaRecorder.state === 'recording') {
         mediaRecorder.stop();
     }
     
-    // Закриваємо потік
     if (currentStream) {
         currentStream.getTracks().forEach(track => track.stop());
         currentStream = null;
     }
     
-    // Зупиняємо візуалізацію
     if (voiceAnimationFrame) {
         cancelAnimationFrame(voiceAnimationFrame);
         voiceAnimationFrame = null;
@@ -140,18 +116,15 @@ window.stopVoiceChat = function() {
         audioContext = null;
     }
     
-    // Оновлюємо стан
     isVoiceActive = false;
     mediaRecorder = null;
     audioChunks = [];
     
-    // Оновлюємо UI
     updateVoiceUI(false);
     
     console.log('✅ Голосовий чат зупинено');
 };
 
-// Налаштування візуалізації аудіо
 function setupAudioVisualization(stream) {
     try {
         audioContext = new (window.AudioContext || window.webkitAudioContext)();
@@ -161,14 +134,12 @@ function setupAudioVisualization(stream) {
         analyser.fftSize = 256;
         source.connect(analyser);
         
-        // Запускаємо анімацію
         visualizeAudio();
     } catch (error) {
         console.error('❌ Помилка налаштування візуалізації:', error);
     }
 }
 
-// Візуалізація аудіо
 function visualizeAudio() {
     if (!analyser || !isVoiceActive) return;
     
@@ -181,21 +152,18 @@ function visualizeAudio() {
         voiceAnimationFrame = requestAnimationFrame(draw);
         analyser.getByteFrequencyData(dataArray);
         
-        // Обчислюємо середній рівень
         let sum = 0;
         for (let i = 0; i < bufferLength; i++) {
             sum += dataArray[i];
         }
         const average = sum / bufferLength;
         
-        // Оновлюємо візуалізацію
         updateVisualization(average);
     };
     
     draw();
 }
 
-// Оновлення візуалізації рівня звуку
 function updateVisualization(level) {
     const voiceIndicator = document.querySelector('.voice-level-indicator');
     if (!voiceIndicator) return;
@@ -214,13 +182,11 @@ function updateVisualization(level) {
     });
 }
 
-// Обробка голосового вводу
 async function processVoiceInput() {
     if (audioChunks.length === 0) {
         console.warn('⚠️ Немає аудіо даних');
         await speakText('Я нічого не почув. Спробуйте ще раз.');
         
-        // Перезапускаємо запис якщо режим активний
         if (isVoiceActive) {
             setTimeout(() => {
                 audioChunks = [];
@@ -236,27 +202,20 @@ async function processVoiceInput() {
     try {
         console.log('🎤 Обробка аудіо...');
         
-        // Показуємо індикатор обробки
         showProcessingIndicator(true);
         
-        // Створюємо blob з аудіо
         const audioBlob = new Blob(audioChunks, { type: 'audio/webm;codecs=opus' });
-        
-        // Конвертуємо в base64
         const base64Audio = await blobToBase64(audioBlob);
         
-        // Використовуємо випадковий ключ для голосового режиму (6-10)
         const voiceApiIndex = getVoiceApiKeyIndex();
         console.log(`🔑 Використовуємо голосовий API ключ #${voiceApiIndex + 1}`);
         
-        // Відправляємо на розпізнавання через Gemini
         const text = await speechToText(base64Audio, voiceApiIndex);
         
         if (!text || text.trim() === '') {
             console.warn('⚠️ Текст не розпізнано');
             await speakText('Вибачте, я не розібрав що ви сказали. Повторіть будь ласка.');
             
-            // Перезапускаємо запис
             if (isVoiceActive) {
                 setTimeout(() => {
                     audioChunks = [];
@@ -271,21 +230,14 @@ async function processVoiceInput() {
         
         console.log('📝 Розпізнаний текст:', text);
         
-        // Додаємо повідомлення користувача в чат
         addVoiceMessageToChat(text, 'user');
-        
-        // Отримуємо відповідь від AI
         const response = await getAIResponse(text, voiceApiIndex);
         
-        // Додаємо відповідь в чат
         addVoiceMessageToChat(response, 'assistant');
-        
-        // Озвучуємо відповідь
         await speakText(response);
         
         showProcessingIndicator(false);
         
-        // Перезапускаємо запис якщо режим активний
         if (isVoiceActive) {
             setTimeout(() => {
                 audioChunks = [];
@@ -301,7 +253,6 @@ async function processVoiceInput() {
         showVoiceError('Помилка обробки голосового вводу');
         showProcessingIndicator(false);
         
-        // Перезапускаємо запис при помилці
         if (isVoiceActive) {
             setTimeout(() => {
                 audioChunks = [];
@@ -313,7 +264,6 @@ async function processVoiceInput() {
     }
 }
 
-// Розпізнавання мови через Gemini API
 async function speechToText(base64Audio, apiKeyIndex) {
     try {
         const endpoint = typeof API_ENDPOINT !== 'undefined' && API_ENDPOINT 
@@ -327,7 +277,7 @@ async function speechToText(base64Audio, apiKeyIndex) {
                 contents: [{
                     parts: [
                         {
-                            text: "Будь ласка, розпізнай та транскрибуй українською мовою що говорить людина в аудіо файлі. Відповідь має містити ТІЛЬКИ розпізнаний текст, без додаткових коментарів або пояснень."
+                            text: "Розпізнай та транскрибуй українською мовою. Відповідь - ТІЛЬКИ текст без коментарів."
                         },
                         {
                             inline_data: {
@@ -361,27 +311,23 @@ async function speechToText(base64Audio, apiKeyIndex) {
     }
 }
 
-// Отримання відповіді від AI
 async function getAIResponse(text, apiKeyIndex) {
     try {
-        // Будуємо контекст як у звичайному чаті
         const contents = [];
         
-        // Додаємо системний промпт
-        if (JARVIS_PROMPT) {
-            const currentData = getCurrentSiteData();
+        if (typeof JARVIS_PROMPT !== 'undefined' && JARVIS_PROMPT) {
+            const currentData = window.getCurrentSiteData ? window.getCurrentSiteData() : '{}';
             contents.push({
                 role: 'user',
-                parts: [{ text: `${JARVIS_PROMPT}\n\n=== ПОТОЧНІ ДАНІ ===\n${currentData}\n\nВажливо: Відповідай КОРОТКО та ЗРОЗУМІЛО, це голосова розмова.` }]
+                parts: [{ text: `${JARVIS_PROMPT}\n\n=== ДАНІ ===\n${currentData}\n\nВідповідай КОРОТКО та ЗРОЗУМІЛО.` }]
             });
             
             contents.push({
                 role: 'model',
-                parts: [{ text: 'Зрозумів! Відповідатиму коротко та чітко.' }]
+                parts: [{ text: 'Зрозумів! Буду відповідати коротко.' }]
             });
         }
         
-        // Додаємо повідомлення користувача
         contents.push({
             role: 'user',
             parts: [{ text: text }]
@@ -413,25 +359,18 @@ async function getAIResponse(text, apiKeyIndex) {
         const data = await response.json();
         let aiResponse = data.candidates?.[0]?.content?.parts?.[0]?.text || 'Вибачте, не зрозумів';
         
-        // Очищаємо від markdown
-        aiResponse = cleanMarkdown(aiResponse);
+        aiResponse = aiResponse
+            .replace(/\*\*(.+?)\*\*/g, '$1')
+            .replace(/\*(.+?)\*/g, '$1')
+            .trim();
         
-        // Виконуємо команди якщо є
-        const commandsExecuted = executeCommands(aiResponse);
-        
-        // Видаляємо команди з тексту
-        commandsExecuted.forEach(cmd => {
-            aiResponse = aiResponse.replace(cmd.original, '');
-        });
-        
-        return aiResponse.trim();
+        return aiResponse;
     } catch (error) {
         console.error('❌ Помилка отримання відповіді AI:', error);
         return 'Вибачте, виникла помилка зв\'язку.';
     }
 }
 
-// Озвучення тексту через Web Speech API
 async function speakText(text) {
     return new Promise((resolve) => {
         if (!('speechSynthesis' in window)) {
@@ -440,12 +379,9 @@ async function speakText(text) {
             return;
         }
         
-        // Зупиняємо попереднє озвучення
         window.speechSynthesis.cancel();
         
         const utterance = new SpeechSynthesisUtterance(text);
-        
-        // Налаштування голосу
         const voices = window.speechSynthesis.getVoices();
         const ukrainianVoice = voices.find(voice => voice.lang.startsWith('uk'));
         
@@ -472,7 +408,6 @@ async function speakText(text) {
     });
 }
 
-// Конвертація blob в base64
 function blobToBase64(blob) {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -482,7 +417,6 @@ function blobToBase64(blob) {
     });
 }
 
-// Додавання повідомлення в чат
 function addVoiceMessageToChat(message, sender) {
     const chatContainer = document.getElementById('chatMessages');
     if (!chatContainer) return;
@@ -492,7 +426,24 @@ function addVoiceMessageToChat(message, sender) {
     chatContainer.scrollTop = chatContainer.scrollHeight;
 }
 
-// Оновлення UI голосового режиму
+function createMessageElement(content, sender) {
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `message ${sender}`;
+    
+    const messageContent = document.createElement('div');
+    messageContent.className = 'message-content';
+    messageContent.innerHTML = content.replace(/\n/g, '<br>');
+    
+    const messageTime = document.createElement('div');
+    messageTime.className = 'message-time';
+    messageTime.textContent = new Date().toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' });
+    
+    messageDiv.appendChild(messageContent);
+    messageDiv.appendChild(messageTime);
+    
+    return messageDiv;
+}
+
 function updateVoiceUI(isActive) {
     const voiceBtn = document.querySelector('.voice-chat-btn');
     const voicePanel = document.querySelector('.voice-chat-panel');
@@ -514,7 +465,6 @@ function updateVoiceUI(isActive) {
     }
 }
 
-// Показ індикатора обробки
 function showProcessingIndicator(show) {
     const indicator = document.querySelector('.voice-processing');
     if (indicator) {
@@ -522,7 +472,6 @@ function showProcessingIndicator(show) {
     }
 }
 
-// Показ помилки
 function showVoiceError(message) {
     const chatContainer = document.getElementById('chatMessages');
     if (chatContainer) {
@@ -532,7 +481,6 @@ function showVoiceError(message) {
     }
 }
 
-// Звуковий сигнал
 function playBeep() {
     const audioContext = new (window.AudioContext || window.webkitAudioContext)();
     const oscillator = audioContext.createOscillator();
@@ -551,7 +499,14 @@ function playBeep() {
     oscillator.stop(audioContext.currentTime + 0.1);
 }
 
-// Ініціалізація при завантаженні
+window.toggleVoiceChat = function() {
+    if (isVoiceActive) {
+        window.stopVoiceChat();
+    } else {
+        window.startVoiceChat();
+    }
+};
+
 document.addEventListener('DOMContentLoaded', function() {
     window.initVoiceSystem();
 });
