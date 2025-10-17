@@ -1,5 +1,4 @@
-// AI Assistant - Джарвіс (Gemini API через Vercel)
-// Версія з фоновою обробкою запасів
+// AI Assistant - Джарвіс (Gemini API через Vercel) з голосовим режимом
 
 let currentApiKeyIndex = 0;
 let chatHistory = [];
@@ -124,376 +123,6 @@ function formatTasks(tasks) {
     }));
 }
 
-// Мапінг категорій для запасів
-const supplyCategoryMap = {
-    'meat_fish': ['мясо', 'риба', 'куряче', 'свинина', 'індичка', 'лосось', 'хек', 'скумбрія', 'оселедець', 'тунець', 'сардини'],
-    'eggs_dairy': ['яйця', 'яйце', 'молоко', 'сметана', 'сир', 'йогурт', 'масло', 'вершки'],
-    'grains_pasta': ['вівсянка', 'гречка', 'рис', 'булгур', 'пшоно', 'манка', 'кус-кус', 'макарони', 'борошно', 'крохмаль'],
-    'vegetables': ['картопля', 'морква', 'цибуля', 'буряк', 'капуста', 'помідори', 'огірки', 'перець', 'часник', 'зелень', 'кабачки', 'баклажани'],
-    'fruits_nuts': ['яблука', 'банани', 'груші', 'ягоди', 'горіхи', 'сухофрукти', 'мед', 'варення', 'шоколад'],
-    'spices_oils': ['сіль', 'перець', 'паприка', 'куркума', 'лавровий', 'базилік', 'олія', 'соус', 'кетчуп', 'майонез', 'гірчиця', 'оцет'],
-    'bread_bakery': ['хліб', 'батон', 'булочки', 'сухарики', 'крекери', 'лаваш', 'тортильї'],
-    'beverages': ['вода', 'чай', 'кава', 'какао', 'сік', 'компот'],
-    'canned_goods': ['горошок', 'кукурудза', 'квасоля', 'томатна паста', 'оливки', 'маслини', 'гриби', 'тушонка'],
-    'baking_supplies': ['цукор', 'ванільний', 'розпушувач', 'какао', 'медові коржі']
-};
-
-function findSupplyCategory(productName) {
-    const lower = productName.toLowerCase();
-    for (const [category, keywords] of Object.entries(supplyCategoryMap)) {
-        if (keywords.some(kw => lower.includes(kw))) return category;
-    }
-    return 'vegetables';
-}
-
-// ПЕРЕВІРКА ПРАВ НА КОМАНДИ
-function checkCommandPermission(commandType) {
-    const currentUser = window.currentUser ? window.currentUser() : null;
-    if (!currentUser) {
-        console.log('⚠️ Користувач не авторизований');
-        return false;
-    }
-    
-    const role = window.getCurrentRole ? window.getCurrentRole(currentUser.username) : null;
-    
-    // Команди перегляду - доступні для ВСІХ
-    const viewCommands = ['ПЕРЕГЛЯНУТИ_ЗАПАСИ', 'ПЕРЕГЛЯНУТИ_ПОКУПКИ', 'ПЕРЕГЛЯНУТИ_МЕНЮ', 
-                          'ПЕРЕГЛЯНУТИ_РОЗКЛАД', 'ПЕРЕГЛЯНУТИ_ЗАВДАННЯ', 'ПЕРЕГЛЯНУТИ_ВСЕ'];
-    
-    if (viewCommands.includes(commandType)) {
-        return true; // Всі можуть переглядати
-    }
-    
-    // Команди змін - залежно від ролі
-    const modifyCommands = {
-        'ДОДАТИ_ЗАПАС': ['Dev', 'Кухня', 'Кладовка', 'Ванна'],
-        'ДОДАТИ_ПОКУПКУ': ['Dev', 'Кухня', 'Кладовка', 'Ванна'],
-        'ВИДАЛИТИ_ПОКУПКУ': ['Dev', 'Кухня', 'Кладовка', 'Ванна'],
-        'ДОДАТИ_МЕНЮ': ['Dev'],
-        'ВИДАЛИТИ_МЕНЮ': ['Dev'],
-        'ДОДАТИ_РОЗКЛАД': ['Dev'],
-        'ВИДАЛИТИ_РОЗКЛАД': ['Dev'],
-        'ДОДАТИ_ЗАВДАННЯ': ['Dev']
-    };
-    
-    if (modifyCommands[commandType]) {
-        const allowed = modifyCommands[commandType].includes(role);
-        if (!allowed) {
-            console.log(`❌ Користувач ${currentUser.name} (${role}) не має прав на ${commandType}`);
-        }
-        return allowed;
-    }
-    
-    return false;
-}
-
-// КОМАНДИ ВИКОНАННЯ
-function executeAddSupply(product, statusText) {
-    if (!checkCommandPermission('ДОДАТИ_ЗАПАС')) {
-        console.log('❌ Команда ДОДАТИ_ЗАПАС недоступна для вашої ролі');
-        return false;
-    }
-    
-    const statusMap = { 'є': 'available', 'закінчується': 'low', 'немає': 'needed' };
-    const status = statusMap[statusText.toLowerCase()] || 'available';
-    const category = findSupplyCategory(product);
-    
-    if (!window.suppliesStatus[category]) window.suppliesStatus[category] = {};
-    window.suppliesStatus[category][product] = status;
-    
-    if (typeof window.renderSupplies === 'function') window.renderSupplies();
-    if (typeof window.autoSaveToCache === 'function') window.autoSaveToCache();
-    
-    console.log(`✅ Додано запас: ${product} (${statusText})`);
-    return true;
-}
-
-function executeAddShopping(categoryName, product) {
-    if (!checkCommandPermission('ДОДАТИ_ПОКУПКУ')) {
-        console.log('❌ Команда ДОДАТИ_ПОКУПКУ недоступна для вашої ролі');
-        return false;
-    }
-    
-    const categoryMap = {
-        "м'ясо": "🍖 Мясо та риба",
-        "молочне": "🥛 Молочні продукти",
-        "овочі": "🥗 Овочі та фрукти",
-        "бакалія": "🍝 Бакалія",
-        "хліб": "🥖 Хліб та випічка",
-        "напої": "🥤 Напої",
-        "інше": "📦 Інше"
-    };
-    
-    const category = categoryMap[categoryName.toLowerCase()] || "📦 Інше";
-    
-    if (!window.shoppingList[category]) window.shoppingList[category] = [];
-    
-    const exists = window.shoppingList[category].some(item => 
-        item.name.toLowerCase() === product.toLowerCase()
-    );
-    
-    if (!exists) {
-        window.shoppingList[category].push({
-            id: Date.now() + Math.random(),
-            name: product,
-            bought: false
-        });
-        
-        if (typeof window.renderList === 'function') window.renderList();
-        if (typeof window.autoSaveToCache === 'function') window.autoSaveToCache();
-        
-        console.log(`✅ Додано в покупки: ${product}`);
-        return true;
-    }
-    return false;
-}
-
-function executeRemoveShopping(product) {
-    if (!checkCommandPermission('ВИДАЛИТИ_ПОКУПКУ')) {
-        console.log('❌ Команда ВИДАЛИТИ_ПОКУПКУ недоступна для вашої ролі');
-        return false;
-    }
-    
-    let found = false;
-    for (const category in window.shoppingList) {
-        window.shoppingList[category] = window.shoppingList[category].filter(item => {
-            if (item.name.toLowerCase().includes(product.toLowerCase())) {
-                found = true;
-                return false;
-            }
-            return true;
-        });
-    }
-    
-    if (found) {
-        if (typeof window.renderList === 'function') window.renderList();
-        if (typeof window.autoSaveToCache === 'function') window.autoSaveToCache();
-        console.log(`✅ Видалено з покупок: ${product}`);
-        return true;
-    }
-    return false;
-}
-
-function executeAddMenu(day, meal, dish) {
-    if (!checkCommandPermission('ДОДАТИ_МЕНЮ')) {
-        console.log('❌ Команда ДОДАТИ_МЕНЮ недоступна для вашої ролі (тільки Dev)');
-        return false;
-    }
-    
-    if (!window.weeklyMenu[day]) window.weeklyMenu[day] = {};
-    window.weeklyMenu[day][meal] = dish;
-    
-    if (typeof window.renderMenu === 'function') window.renderMenu();
-    if (typeof window.autoSaveToCache === 'function') window.autoSaveToCache();
-    
-    console.log(`✅ Додано меню: ${day}, ${meal} - ${dish}`);
-    return true;
-}
-
-function executeRemoveMenu(day, meal) {
-    if (!checkCommandPermission('ВИДАЛИТИ_МЕНЮ')) {
-        console.log('❌ Команда ВИДАЛИТИ_МЕНЮ недоступна для вашої ролі (тільки Dev)');
-        return false;
-    }
-    
-    if (window.weeklyMenu[day] && window.weeklyMenu[day][meal]) {
-        delete window.weeklyMenu[day][meal];
-        
-        if (typeof window.renderMenu === 'function') window.renderMenu();
-        if (typeof window.autoSaveToCache === 'function') window.autoSaveToCache();
-        
-        console.log(`✅ Видалено меню: ${day}, ${meal}`);
-        return true;
-    }
-    return false;
-}
-
-function executeAddSchedule(time, event) {
-    if (!checkCommandPermission('ДОДАТИ_РОЗКЛАД')) {
-        console.log('❌ Команда ДОДАТИ_РОЗКЛАД недоступна для вашої ролі (тільки Dev)');
-        return false;
-    }
-    
-    if (!window.dailySchedule) window.dailySchedule = [];
-    
-    const existingIndex = window.dailySchedule.findIndex(item => item.time === time);
-    
-    if (existingIndex !== -1) {
-        window.dailySchedule[existingIndex].text = event;
-    } else {
-        window.dailySchedule.push({
-            id: Date.now() + Math.random(),
-            time: time,
-            text: event,
-            completed: false
-        });
-        window.dailySchedule.sort((a, b) => a.time.localeCompare(b.time));
-    }
-    
-    if (typeof window.renderDailySchedule === 'function') window.renderDailySchedule();
-    if (typeof window.autoSaveToCache === 'function') window.autoSaveToCache();
-    
-    console.log(`✅ Додано розклад: ${time} - ${event}`);
-    return true;
-}
-
-function executeRemoveSchedule(time) {
-    if (!checkCommandPermission('ВИДАЛИТИ_РОЗКЛАД')) {
-        console.log('❌ Команда ВИДАЛИТИ_РОЗКЛАД недоступна для вашої ролі (тільки Dev)');
-        return false;
-    }
-    
-    if (window.dailySchedule) {
-        window.dailySchedule = window.dailySchedule.filter(item => item.time !== time);
-        
-        if (typeof window.renderDailySchedule === 'function') window.renderDailySchedule();
-        if (typeof window.autoSaveToCache === 'function') window.autoSaveToCache();
-        
-        console.log(`✅ Видалено розклад: ${time}`);
-        return true;
-    }
-    return false;
-}
-
-function executeAddTask(task, assignee) {
-    if (!checkCommandPermission('ДОДАТИ_ЗАВДАННЯ')) {
-        console.log('❌ Команда ДОДАТИ_ЗАВДАННЯ недоступна для вашої ролі (тільки Dev)');
-        return false;
-    }
-    
-    if (!window.tasks) window.tasks = [];
-    
-    window.tasks.push({
-        id: Date.now() + Math.random(),
-        text: task,
-        assignee: assignee,
-        completed: false
-    });
-    
-    if (typeof window.renderTasks === 'function') window.renderTasks();
-    if (typeof window.autoSaveToCache === 'function') window.autoSaveToCache();
-    
-    console.log(`✅ Додано завдання: ${task} (${assignee})`);
-    return true;
-}
-
-// ФУНКЦІЇ ОНОВЛЕННЯ ДАНИХ
-function refreshSuppliesData() {
-    const supplies = window.suppliesStatus || {};
-    return `📦 ЗАПАСИ:\n${JSON.stringify(formatSupplies(supplies), null, 2)}`;
-}
-
-function refreshShoppingData() {
-    const shopping = window.shoppingList || {};
-    return `🛒 СПИСОК ПОКУПОК:\n${JSON.stringify(formatShoppingList(shopping), null, 2)}`;
-}
-
-function refreshMenuData() {
-    const menu = window.weeklyMenu || {};
-    return `🍽️ МЕНЮ НА ТИЖДЕНЬ:\n${JSON.stringify(formatWeeklyMenu(menu), null, 2)}`;
-}
-
-function refreshScheduleData() {
-    const schedule = window.dailySchedule || [];
-    return `📅 РОЗПОРЯДОК ДНЯ:\n${JSON.stringify(formatDailySchedule(schedule), null, 2)}`;
-}
-
-function refreshTasksData() {
-    const tasks = window.tasks || [];
-    return `🎯 ЗАВДАННЯ:\n${JSON.stringify(formatTasks(tasks), null, 2)}`;
-}
-
-// ВИКОНАННЯ КОМАНД
-function executeCommands(text) {
-    const executedCommands = [];
-    const lines = text.split('\n');
-    
-    for (const line of lines) {
-        const trimmed = line.trim();
-        
-        // КОМАНДИ ПЕРЕГЛЯДУ ДАНИХ
-        if (trimmed.startsWith('ПЕРЕГЛЯНУТИ_ЗАПАСИ')) {
-            const freshData = refreshSuppliesData();
-            executedCommands.push({ original: line, type: 'ПЕРЕГЛЯНУТИ_ЗАПАСИ', data: freshData, isViewCommand: true });
-        }
-        else if (trimmed.startsWith('ПЕРЕГЛЯНУТИ_ПОКУПКИ')) {
-            const freshData = refreshShoppingData();
-            executedCommands.push({ original: line, type: 'ПЕРЕГЛЯНУТИ_ПОКУПКИ', data: freshData, isViewCommand: true });
-        }
-        else if (trimmed.startsWith('ПЕРЕГЛЯНУТИ_МЕНЮ')) {
-            const freshData = refreshMenuData();
-            executedCommands.push({ original: line, type: 'ПЕРЕГЛЯНУТИ_МЕНЮ', data: freshData, isViewCommand: true });
-        }
-        else if (trimmed.startsWith('ПЕРЕГЛЯНУТИ_РОЗКЛАД')) {
-            const freshData = refreshScheduleData();
-            executedCommands.push({ original: line, type: 'ПЕРЕГЛЯНУТИ_РОЗКЛАД', data: freshData, isViewCommand: true });
-        }
-        else if (trimmed.startsWith('ПЕРЕГЛЯНУТИ_ЗАВДАННЯ')) {
-            const freshData = refreshTasksData();
-            executedCommands.push({ original: line, type: 'ПЕРЕГЛЯНУТИ_ЗАВДАННЯ', data: freshData, isViewCommand: true });
-        }
-        else if (trimmed.startsWith('ПЕРЕГЛЯНУТИ_ВСЕ')) {
-            const freshData = getCurrentSiteData();
-            executedCommands.push({ original: line, type: 'ПЕРЕГЛЯНУТИ_ВСЕ', data: freshData, isViewCommand: true });
-        }
-        // КОМАНДИ МОДИФІКАЦІЇ
-        else if (trimmed.startsWith('ДОДАТИ_ЗАПАС:')) {
-            const params = trimmed.replace('ДОДАТИ_ЗАПАС:', '').trim().split(',').map(p => p.trim());
-            if (params.length === 2) {
-                const success = executeAddSupply(params[0], params[1]);
-                executedCommands.push({ original: line, type: 'ДОДАТИ_ЗАПАС', isViewCommand: false, success });
-            }
-        }
-        else if (trimmed.startsWith('ДОДАТИ_ПОКУПКУ:')) {
-            const params = trimmed.replace('ДОДАТИ_ПОКУПКУ:', '').trim().split(',').map(p => p.trim());
-            if (params.length === 2) {
-                const success = executeAddShopping(params[0], params[1]);
-                executedCommands.push({ original: line, type: 'ДОДАТИ_ПОКУПКУ', isViewCommand: false, success });
-            }
-        }
-        else if (trimmed.startsWith('ВИДАЛИТИ_ПОКУПКУ:')) {
-            const product = trimmed.replace('ВИДАЛИТИ_ПОКУПКУ:', '').trim();
-            const success = executeRemoveShopping(product);
-            executedCommands.push({ original: line, type: 'ВИДАЛИТИ_ПОКУПКУ', isViewCommand: false, success });
-        }
-        else if (trimmed.startsWith('ДОДАТИ_МЕНЮ:')) {
-            const params = trimmed.replace('ДОДАТИ_МЕНЮ:', '').trim().split(',').map(p => p.trim());
-            if (params.length === 3) {
-                const success = executeAddMenu(params[0], params[1], params[2]);
-                executedCommands.push({ original: line, type: 'ДОДАТИ_МЕНЮ', isViewCommand: false, success });
-            }
-        }
-        else if (trimmed.startsWith('ВИДАЛИТИ_МЕНЮ:')) {
-            const params = trimmed.replace('ВИДАЛИТИ_МЕНЮ:', '').trim().split(',').map(p => p.trim());
-            if (params.length === 2) {
-                const success = executeRemoveMenu(params[0], params[1]);
-                executedCommands.push({ original: line, type: 'ВИДАЛИТИ_МЕНЮ', isViewCommand: false, success });
-            }
-        }
-        else if (trimmed.startsWith('ДОДАТИ_РОЗКЛАД:')) {
-            const params = trimmed.replace('ДОДАТИ_РОЗКЛАД:', '').trim().split(',').map(p => p.trim());
-            if (params.length === 2) {
-                const success = executeAddSchedule(params[0], params[1]);
-                executedCommands.push({ original: line, type: 'ДОДАТИ_РОЗКЛАД', isViewCommand: false, success });
-            }
-        }
-        else if (trimmed.startsWith('ВИДАЛИТИ_РОЗКЛАД:')) {
-            const time = trimmed.replace('ВИДАЛИТИ_РОЗКЛАД:', '').trim();
-            const success = executeRemoveSchedule(time);
-            executedCommands.push({ original: line, type: 'ВИДАЛИТИ_РОЗКЛАД', isViewCommand: false, success });
-        }
-        else if (trimmed.startsWith('ДОДАТИ_ЗАВДАННЯ:')) {
-            const params = trimmed.replace('ДОДАТИ_ЗАВДАННЯ:', '').trim().split(',').map(p => p.trim());
-            if (params.length === 2) {
-                const success = executeAddTask(params[0], params[1]);
-                executedCommands.push({ original: line, type: 'ДОДАТИ_ЗАВДАННЯ', isViewCommand: false, success });
-            }
-        }
-    }
-    
-    return executedCommands;
-}
-
 // Відправка повідомлення до Gemini AI через Vercel
 async function sendMessageToAI(message) {
     if (!JARVIS_PROMPT) {
@@ -521,8 +150,6 @@ async function sendMessageToAI(message) {
         const endpoint = typeof API_ENDPOINT !== 'undefined' && API_ENDPOINT 
             ? API_ENDPOINT 
             : '/api/gemini';
-        
-        console.log(`📤 Відправка запиту з API ключем #${currentApiKeyIndex}`);
         
         const response = await fetch(endpoint, {
             method: 'POST',
@@ -561,65 +188,14 @@ async function sendMessageToAI(message) {
 
         console.log('📥 Відповідь від AI:', aiResponse.substring(0, 100) + '...');
 
-        // ОБРОБКА КОМАНД
-        const commandsExecuted = executeCommands(aiResponse);
-        
-        if (commandsExecuted.length > 0) {
-            console.log('✅ Виконано команд:', commandsExecuted.length);
-        }
-        
-        // Видаляємо команди з тексту відповіді
-        commandsExecuted.forEach(cmd => {
-            aiResponse = aiResponse.replace(cmd.original, '');
-        });
-        aiResponse = aiResponse.trim();
-        
-        // Перевірка команд перегляду даних
-        const viewCommands = commandsExecuted.filter(cmd => cmd.isViewCommand);
-        
-        if (viewCommands.length > 0) {
-            // ФОНОВИЙ РЕЖИМ: показуємо повідомлення, але без переривання розмови
-            chatHistory.push({ role: 'user', content: message });
-            chatHistory.push({ role: 'assistant', content: aiResponse });
-            
-            // Видаляємо loading повідомлення та показуємо основну відповідь
-            chatContainer.removeChild(loadingMessage);
-            if (aiResponse) {
-                chatContainer.appendChild(createMessageElement(aiResponse, 'assistant'));
-            }
-            
-            // Показуємо дані у невеликому форматі внизу (фоновий режим)
-            let backgroundMessage = '📊 [Дані оновлено в фоні]\n\n';
-            for (const cmd of viewCommands) {
-                backgroundMessage += `✓ ${cmd.type}\n`;
-            }
-            
-            chatContainer.appendChild(createMessageElement(backgroundMessage, 'assistant', false, true));
-            chatContainer.scrollTop = chatContainer.scrollHeight;
-            
-            // Автоматично збережемо дані
-            setTimeout(async () => {
-                console.log('💾 Автоматичне збереження в Firebase...');
-                await autoSaveToFirebaseNoPrompt();
-            }, 800);
-        } else {
-            // Звичайна обробка без команд перегляду
-            if (commandsExecuted.length > 0) {
-                setTimeout(async () => {
-                    console.log('💾 Автоматичне збереження в Firebase...');
-                    await autoSaveToFirebaseNoPrompt();
-                }, 800);
-            }
-            
-            chatContainer.removeChild(loadingMessage);
-            chatContainer.appendChild(createMessageElement(aiResponse, 'assistant'));
-            chatContainer.scrollTop = chatContainer.scrollHeight;
-            
-            chatHistory.push({ role: 'user', content: message });
-            chatHistory.push({ role: 'assistant', content: aiResponse });
-        }
+        chatHistory.push({ role: 'user', content: message });
+        chatHistory.push({ role: 'assistant', content: aiResponse });
         
         if (chatHistory.length > 20) chatHistory = chatHistory.slice(-20);
+        
+        chatContainer.removeChild(loadingMessage);
+        chatContainer.appendChild(createMessageElement(aiResponse, 'assistant'));
+        chatContainer.scrollTop = chatContainer.scrollHeight;
         
         saveHistoryToCache();
 
@@ -631,66 +207,27 @@ async function sendMessageToAI(message) {
     }
 }
 
-// Автоматичне збереження в Firebase БЕЗ PROMPT
-async function autoSaveToFirebaseNoPrompt() {
-    try {
-        if (typeof window.auth === 'undefined' || !window.auth.currentUser) {
-            console.log('⚠️ Користувач не авторизований, збереження пропущено');
-            return;
-        }
-
-        const user = window.auth.currentUser;
-        const userId = user.uid;
-
-        const dataToSave = {
-            supplies: window.suppliesStatus || {},
-            shopping: window.shoppingList || {},
-            menu: window.weeklyMenu || {},
-            daily: window.dailySchedule || [],
-            tasks: window.tasks || [],
-            lastUpdate: new Date().toISOString()
-        };
-
-        if (typeof window.database !== 'undefined') {
-            const userRef = window.database.ref(`users/${userId}`);
-            await userRef.set(dataToSave);
-            console.log('✅ Дані автоматично збережено в Firebase');
-        }
-
-        if (typeof window.autoSaveToCache === 'function') {
-            window.autoSaveToCache();
-        }
-
-    } catch (error) {
-        console.error('❌ Помилка автоматичного збереження:', error);
-    }
-}
-
 // Допоміжні функції
 function buildConversationHistory(message) {
     const contents = [];
     
-    // ЗАВЖДИ додаємо системний промпт на початку
     if (chatHistory.length === 0 || !conversationContext) {
         const currentData = getCurrentSiteData();
         
-        // Системне повідомлення з ПОВНИМ промптом
         contents.push({
             role: 'user',
-            parts: [{ text: `${JARVIS_PROMPT}\n\n=== ПОТОЧНІ ДАНІ З СИСТЕМИ ===\n${currentData}\n\n=== КІНЕЦЬ ДАНИХ ===\n\nВажливо: Ти маєш доступ до команд, які описані вище. Використовуй їх коли користувач просить щось додати, змінити або переглянути.` }]
+            parts: [{ text: `${JARVIS_PROMPT}\n\n=== ПОТОЧНІ ДАНІ З СИСТЕМИ ===\n${currentData}\n\n=== КІНЕЦЬ ДАНИХ ===\n\nВажливо: Ти маєш доступ до всіх команд.` }]
         });
         
-        // Підтвердження від асистента
         contents.push({
             role: 'model',
-            parts: [{ text: 'Зрозумів! Я Джарвіс, ваш асистент. Я бачу всі дані та маю доступ до команд керування системою. Готовий допомогти!' }]
+            parts: [{ text: 'Зрозумів! Я Джарвіс, ваш асистент. Готовий допомогти!' }]
         });
         
         conversationContext = currentData;
         console.log('✅ Системний промпт додано до контексту');
     }
     
-    // Додаємо історію розмови
     for (const historyItem of chatHistory) {
         contents.push({
             role: historyItem.role === 'user' ? 'user' : 'model',
@@ -698,10 +235,7 @@ function buildConversationHistory(message) {
         });
     }
     
-    // Додаємо нове повідомлення користувача
     contents.push({ role: 'user', parts: [{ text: message }] });
-    
-    console.log('📋 Історія розмови:', contents.length, 'повідомлень');
     
     return contents;
 }
@@ -728,27 +262,19 @@ function getErrorMessage(error) {
         msg += 'Перевищено ліміт запитів. Спробуйте через хвилину.';
     } else if (error.message.includes('No API keys configured')) {
         msg += 'API ключі не налаштовані на сервері. Зверніться до адміністратора.';
-    } else if (error.message.includes('Invalid API key index')) {
-        msg += 'Невірний індекс API ключа. Зверніться до адміністратора.';
     } else {
         msg += error.message;
     }
     return msg;
 }
 
-// Збереження/завантаження історії (ПЕРСОНАЛЬНО ДЛЯ КОРИСТУВАЧА)
+// Збереження/завантаження історії
 function saveHistoryToCache() {
     try {
-        if (!currentChatUser) {
-            console.warn('⚠️ Користувач чату не визначений');
-            return;
-        }
+        if (!currentChatUser) return;
         
         const storageKey = `jarvis_chat_history_${currentChatUser}`;
-        const contextKey = `jarvis_context_${currentChatUser}`;
-        
         localStorage.setItem(storageKey, JSON.stringify(chatHistory));
-        localStorage.setItem(contextKey, conversationContext);
         
         console.log(`💾 Історія збережена для користувача: ${currentChatUser}`);
     } catch (error) {
@@ -760,7 +286,6 @@ function loadHistoryFromCache() {
     try {
         const currentUser = window.currentUser ? window.currentUser() : null;
         if (!currentUser) {
-            console.warn('⚠️ Користувач не визначений');
             chatHistory = [];
             conversationContext = null;
             return;
@@ -770,24 +295,17 @@ function loadHistoryFromCache() {
         currentChatUser = username;
         
         const storageKey = `jarvis_chat_history_${username}`;
-        const contextKey = `jarvis_context_${username}`;
-        
         const savedHistory = localStorage.getItem(storageKey);
-        const savedContext = localStorage.getItem(contextKey);
         
         if (savedHistory) {
             chatHistory = JSON.parse(savedHistory);
-            console.log(`✅ Історія завантажена для користувача: ${username} (${chatHistory.length} повідомлень)`);
+            console.log(`✅ Історія завантажена для користувача: ${username}`);
         } else {
             chatHistory = [];
             console.log(`ℹ️ Немає збереженої історії для ${username}`);
         }
         
-        if (savedContext) {
-            conversationContext = savedContext;
-        } else {
-            conversationContext = null;
-        }
+        conversationContext = null;
     } catch (error) {
         console.error('❌ Помилка завантаження історії:', error);
         chatHistory = [];
@@ -796,9 +314,9 @@ function loadHistoryFromCache() {
 }
 
 // Створення елемента повідомлення
-function createMessageElement(content, sender, isLoading = false, isBackground = false) {
+function createMessageElement(content, sender, isLoading = false) {
     const messageDiv = document.createElement('div');
-    messageDiv.className = `message ${sender}${isLoading ? ' loading' : ''}${isBackground ? ' background-message' : ''}`;
+    messageDiv.className = `message ${sender}${isLoading ? ' loading' : ''}`;
     
     const messageContent = document.createElement('div');
     messageContent.className = 'message-content';
@@ -819,10 +337,7 @@ async function initChat() {
     const chatContainer = document.getElementById('chatMessages');
     if (!chatContainer) return;
 
-    // Завантажуємо промпт користувача і встановлюємо API ключ
     await loadUserPrompt();
-
-    // Завантажуємо історію для поточного користувача
     loadHistoryFromCache();
     
     if (chatHistory.length > 0) {
@@ -838,7 +353,7 @@ async function initChat() {
         const userName = currentUser ? currentUser.name : 'Користувач';
         
         chatContainer.appendChild(createMessageElement(
-            `Доброго дня, ${userName}! Я Джарвіс, ваш асистент.\n\nЯ бачу всі ваші дані:\n• Запаси продуктів\n• Список покупок\n• Меню на тиждень\n• Розпорядок дня\n• Завдання\n\nМаю доступ до команд керування системою. Чим можу допомогти сьогодні?`,
+            `Доброго дня, ${userName}! Я Джарвіс, ваш асистент.\n\nЯ готовий допомогти з меню, покупками, завданнями та розпорядком дня. Чим можу допомогти сьогодні?`,
             'assistant'
         ));
     }
@@ -866,7 +381,7 @@ function sendMessage() {
 }
 
 function clearChat() {
-    if (!confirm('Ви впевнені, що хочете очистити історію чату?\n\nЦе видалить всі попередні повідомлення та контекст розмови для вашого акаунта.')) return;
+    if (!confirm('Ви впевнені, що хочете очистити історію чату?')) return;
     
     const chatContainer = document.getElementById('chatMessages');
     if (chatContainer) {
@@ -874,10 +389,8 @@ function clearChat() {
         chatHistory = [];
         conversationContext = null;
         
-        // Видаляємо збережену історію для поточного користувача
         if (currentChatUser) {
             localStorage.removeItem(`jarvis_chat_history_${currentChatUser}`);
-            localStorage.removeItem(`jarvis_context_${currentChatUser}`);
             console.log(`🗑️ Історія видалена для користувача: ${currentChatUser}`);
         }
         
@@ -889,138 +402,13 @@ function updateContext() {
     conversationContext = getCurrentSiteData();
     console.log('✅ Контекст Джарвіса оновлено');
 }
-function createAssistantSection(currentUser, USERS) {
-    const assistantSection = document.getElementById('assistant-section');
-    if (!assistantSection) return;
-    
-    const userAvatar = currentUser.avatar || '👤';
-    const userName = currentUser.name || 'Користувач';
-    
-    assistantSection.innerHTML = `
-        <div id="assistant-content">
-            <div class="chat-container">
-                <div class="chat-header">
-                    <h2><span class="jarvis-icon">🤖</span> Джарвіс - Кухонний Асистент</h2>
-                    <div class="chat-user-info">
-                        <span>Профіль: ${userAvatar} ${userName}</span>
-                    </div>
-                </div>
-                <div class="chat-messages" id="chatMessages"></div>
-                
-                <!-- Voice Chat Panel -->
-                <div class="voice-chat-panel">
-                    <div class="voice-panel-header">
-                        <div class="voice-panel-title">
-                            <span class="icon">🎤</span>
-                            <span>Голосовий режим</span>
-                        </div>
-                        <button class="voice-stop-btn" onclick="window.stopVoiceChat()">
-                            🛑 Зупинити
-                        </button>
-                    </div>
-                    
-                    <div class="voice-status">
-                        <div class="recording-indicator">
-                            <div class="recording-dot"></div>
-                            <span class="recording-text">ЗАПИС...</span>
-                        </div>
-                        <div class="voice-status-text">Говоріть зараз (макс. 30 сек)</div>
-                        
-                        <!-- Audio Level Indicator -->
-                        <div class="voice-level-indicator">
-                            <div class="voice-bar"></div>
-                            <div class="voice-bar"></div>
-                            <div class="voice-bar"></div>
-                            <div class="voice-bar"></div>
-                            <div class="voice-bar"></div>
-                            <div class="voice-bar"></div>
-                            <div class="voice-bar"></div>
-                            <div class="voice-bar"></div>
-                            <div class="voice-bar"></div>
-                            <div class="voice-bar"></div>
-                        </div>
-                    </div>
-                    
-                    <!-- Processing Indicator -->
-                    <div class="voice-processing">
-                        <div class="voice-processing-spinner"></div>
-                        <div class="voice-processing-text">Обробка вашого голосу...</div>
-                    </div>
-                    
-                    <!-- Voice Instructions -->
-                    <div class="voice-instructions">
-                        <strong>💡 Підказки:</strong><br>
-                        • Говоріть чітко та не дуже швидко<br>
-                        • Уникайте фонового шуму<br>
-                        • Розмовляйте природньо, як з людиною<br>
-                        • Можете давати команди ("додай запас", "що в меню")
-                    </div>
-                    
-                    <div class="voice-api-info">
-                        <span class="icon">🔑</span>
-                        <span>Використовуються виділені ключі для голосу (API #6-10)</span>
-                    </div>
-                </div>
-                
-                <div class="chat-input-container">
-                    <div class="chat-input-wrapper">
-                        <textarea 
-                            id="chatInput" 
-                            class="chat-input" 
-                            placeholder="Напишіть повідомлення Джарвісу..."
-                            onkeypress="window.handleKeyPress(event)"
-                            rows="1"
-                        ></textarea>
-                        
-                        <!-- Voice Chat Button -->
-                        <button class="voice-chat-btn" onclick="window.toggleVoiceChat()" title="Голосовий чат">
-                            🎤
-                        </button>
-                        
-                        <button class="chat-send-btn" onclick="window.sendMessage()">
-                            <span>📤</span>
-                        </button>
-                    </div>
-                    <div class="chat-controls">
-                        <button class="chat-clear-btn" onclick="window.clearChat()">
-                            🗑️ Очистити чат
-                        </button>
-                        <div class="chat-status online">
-                            <span>🟢</span> Онлайн
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    `;
-    
-    // Ініціалізуємо чат
-    if (typeof window.initChat === 'function') {
-        window.initChat();
-    }
-    
-    // Ініціалізуємо голосову систему
-    if (typeof window.initVoiceSystem === 'function') {
-        window.initVoiceSystem();
-    }
-}
 
-// Функція перемикання голосового чату
-window.toggleVoiceChat = function() {
-    if (isVoiceActive) {
-        window.stopVoiceChat();
-    } else {
-        window.startVoiceChat();
-    }
-};
-
-// Експортуємо оновлену функцію
-window.createAssistantSectionWithVoice = createAssistantSection;
 // Експорт функцій
 window.sendMessage = sendMessage;
 window.handleKeyPress = handleKeyPress;
 window.clearChat = clearChat;
 window.initChat = initChat;
 window.updateJarvisContext = updateContext;
+window.getCurrentSiteData = getCurrentSiteData;
 
-console.log('✅ Джарвіс з фоновою обробкою запасів завантажено');
+console.log('✅ AI Assistant з текстовим режимом завантажено');
