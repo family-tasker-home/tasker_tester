@@ -25,7 +25,7 @@
     "schedule": {
       "monday": "Кладовка",
       "tuesday": "Viewer",
-      "wednesday": "Viewer",
+      "wednesday": "Коридор",
       "thursday": "Кухня",
       "friday": "Viewer",
       "saturday": "Viewer",
@@ -45,7 +45,7 @@
       "thursday": "Viewer",
       "friday": "Ванна",
       "saturday": "Кухня",
-      "sunday": "Viewer"
+      "sunday": "Коридор"
     }
   },
   "Лев": {
@@ -55,7 +55,7 @@
     "avatar": "🦁",
     "promptFile": "lev",
     "schedule": {
-      "monday": "Viewer",
+      "monday": "Коридор",
       "tuesday": "Viewer",
       "wednesday": "Ванна",
       "thursday": "Viewer",
@@ -76,7 +76,7 @@
       "wednesday": "Кухня",
       "thursday": "Viewer",
       "friday": "Viewer",
-      "saturday": "Viewer",
+      "saturday": "Коридор",
       "sunday": "Кладовка"
     }
   },
